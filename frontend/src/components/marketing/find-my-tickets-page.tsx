@@ -3,7 +3,7 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Footer } from "@/components/marketing/footer";
 import { Header } from "@/components/marketing/header";
 import { TicketLookup } from "@/components/marketing/ticket-lookup";
-import { SITE_CONFIG } from "@/config/site";
+import { CONFERENCE_INFO } from "@/data/conference";
 
 /**
  * Shared ticket-desk page body. Next.js and the SPA both render this so the
@@ -11,34 +11,33 @@ import { SITE_CONFIG } from "@/config/site";
  */
 export function FindMyTicketsPage() {
   return (
-    <main className="landing-navy min-h-screen flex flex-col">
+    <div className="relative isolate min-h-screen bg-white">
       <Header />
 
-      <section className="ms-root relative isolate overflow-hidden border-b border-white/10 px-5 py-12 sm:px-8 sm:py-16">
-        <div aria-hidden className="ms-bg">
-          <span className="ms-stars" />
-          <span className="ms-orbit ms-orbit-a" />
-          <span className="ms-orbit ms-orbit-b" />
-          <span className="ms-glow" />
-        </div>
+      <section className="relative isolate overflow-hidden border-b border-[#e5e7eb] px-5 py-16 sm:px-8 sm:py-24">
+        <div aria-hidden="true" className="bg-ticks pointer-events-none absolute inset-0 -z-10" />
+        <div
+          aria-hidden="true"
+          className="glow absolute -top-[300px] left-1/2 -z-10 h-[640px] w-[1200px] -translate-x-1/2 [--glow-strength:0.22]"
+        />
 
         <div className="relative z-10 mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#8EE3D6]/30 bg-[#0E1020]/60 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#8EE3D6]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#0e7a6e]/30 bg-[#0e7a6e]/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#0e7a6e]">
             <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
             Ticket desk
           </span>
-          <h1 className="mt-6 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
+          <h1 className="h-hero mt-6 text-[#111827]">
             Your QR codes,
             <br />
-            <span className="text-[#8EE3D6]">one easy lookup.</span>
+            <span className="text-[#0e7a6e]">one easy lookup.</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#B9C4D4] sm:text-base">
-            Enter the phone number you registered with to retrieve individual
-            tickets and group passes for {SITE_CONFIG.eventTitle}.
+          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#4b5563] sm:text-base">
+            Enter the phone number you registered with to retrieve individual tickets and group
+            passes for {CONFERENCE_INFO.title}.
           </p>
           <Link
             href="/"
-            className="mt-7 inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:border-[#8EE3D6]/60 hover:bg-white/5"
+            className="mt-7 inline-flex items-center gap-2 rounded-full border border-[#e5e7eb] bg-white px-5 py-2.5 text-xs font-semibold text-[#111827] transition-colors hover:border-[#0e7a6e] hover:text-[#0e7a6e]"
           >
             <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.8} />
             Back to the landing page
@@ -46,11 +45,11 @@ export function FindMyTicketsPage() {
         </div>
       </section>
 
-      <div className="relative z-10 flex-1 bg-[#07101e]/55">
+      <div className="relative z-10 flex-1 bg-[#f4f5f7]">
         <TicketLookup />
       </div>
 
       <Footer />
-    </main>
+    </div>
   );
 }
