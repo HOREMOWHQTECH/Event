@@ -51,6 +51,8 @@ const CURRENCY_LIST: SupportedCurrency[] = ["NGN", "USD", "EUR", "GBP"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INITIAL_PHONE = "+234 ";
 const MIN_NGN_PER_PASS_MINOR = 200_000;
+// Custom NGN contribution amounts unlock at 00:00 WAT on day 2 of the event.
+const NGN_CUSTOM_AMOUNT_UNLOCK_MS = Date.parse("2026-12-09T00:00:00+01:00");
 const LEGACY_DRAFT_KEY = "ihgc_draft_registration";
 const TOTAL_STEPS = 6;
 const HISTORY_KEY = "registrationStep";
@@ -1076,6 +1078,7 @@ export default function RegisterPage() {
   /* ---------- Pricing ---------- */
 
   const effectiveSeats = isGroup ? seatsCount : 1;
+  const customAmountUnlocked = Date.now() >= NGN_CUSTOM_AMOUNT_UNLOCK_MS;
   const unitMinor = pricesMinor[currency];
   const minimumNairaMinor = effectiveSeats * MIN_NGN_PER_PASS_MINOR;
   const standardGroupNairaMinor =
@@ -1089,7 +1092,11 @@ export default function RegisterPage() {
     currency === "NGN"
       ? isGroup
         ? standardGroupNairaMinor
-        : customNairaMinor
+        : customAmountUnlocked
+          ? customNairaMinor
+          : typeof pricesMinor.NGN === "number"
+            ? pricesMinor.NGN
+            : null
       : typeof unitMinor === "number"
         ? effectiveSeats * unitMinor
         : null;
@@ -1113,13 +1120,13 @@ export default function RegisterPage() {
         errs.inviteeCount = `Enter a number between 1 and ${seatsCount}.`;
       }
       if (genderCounts.male + genderCounts.female !== seatsCount) {
-        errs.genderCounts = `Brothers and Sisters must add up to ${seatsCount} participants (children included).`;
+        errs.genderCounts = `Males and Females must add up to ${seatsCount} participants (children included).`;
       }
       if (hasChildren && (childCount < 1 || childCount > seatsCount)) {
         errs.childCount = `Enter a child count between 1 and ${seatsCount}.`;
       }
     } else {
-      if (gender !== "male" && gender !== "female") errs.gender = "Select Brother or Sister.";
+      if (gender !== "male" && gender !== "female") errs.gender = "Select Male or Female.";
       if (firstTime !== "yes" && firstTime !== "no") errs.firstTime = "Select Yes or No.";
     }
 
@@ -1142,7 +1149,7 @@ export default function RegisterPage() {
       if (!guardianPhone.trim()) errs.guardianPhone = "Enter a parent or guardian phone number.";
     }
 
-    if (!isGroup && currency === "NGN") {
+    if (!isGroup && currency === "NGN" && customAmountUnlocked) {
       if (
         !Number.isInteger(customNairaMajor) ||
         customNairaMinor === null ||
@@ -1290,7 +1297,8 @@ export default function RegisterPage() {
         childCount: isGroup && hasChildren ? childCount : undefined,
         turnstileToken: turnstileToken || undefined,
         consent,
-        customAmountMinor: !isGroup && currency === "NGN" ? customNairaMinor : undefined,
+        customAmountMinor:
+          !isGroup && currency === "NGN" && customAmountUnlocked ? customNairaMinor : undefined,
         groupAttendance: isGroup ? groupAttendance : undefined,
       };
 
@@ -1448,12 +1456,12 @@ export default function RegisterPage() {
 
   const categorySummary = isGroup
     ? `Group participants · ${groupName.trim() || "Chapter"} · ${seatsCount} participants`
-    : `Individual participant · ${gender === "male" ? "Brother" : "Sister"} · ${
+    : `Individual participant · ${gender === "male" ? "Male" : "Female"} · ${
         firstTime === "yes" ? "First-time" : "Returning"
       } attendee`;
   const attendeeSummary = isGroup
     ? `${groupName.trim() || "Chapter"} · ${seatsCount} participants`
-    : `${gender === "male" ? "Brother" : "Sister"} · ${
+    : `${gender === "male" ? "Male" : "Female"} · ${
         firstTime === "yes" ? "First-time" : "Returning"
       }`;
   const contactSummary = payerName.trim()
@@ -1799,7 +1807,7 @@ export default function RegisterPage() {
                           clearErr("gender");
                         }}
                       >
-                        {value === "male" ? "Brother" : "Sister"}
+                        {value === "male" ? "Male" : "Female"}
                       </ChoiceButton>
                     ))}
                   </div>
@@ -1855,7 +1863,7 @@ export default function RegisterPage() {
                       id="field-payerName"
                       type="text"
                       autoComplete="name"
-                      placeholder="Brother / Sister Full Name"
+                      placeholder="Full Name"
                       value={payerName}
                       onChange={(event) => {
                         setPayerName(event.target.value);
@@ -2116,7 +2124,9 @@ export default function RegisterPage() {
                   hint={
                     isGroup
                       ? "Calculated automatically from the standard price and your participant count."
-                      : `Minimum is ${formatMoneyMinor(minimumNairaMinor, "NGN")}.`
+                      : customAmountUnlocked
+                        ? `Minimum is ${formatMoneyMinor(minimumNairaMinor, "NGN")}.`
+                        : "Standard fee is locked until 9 December 2026."
                   }
                 >
                   <div className="flex h-[60px] w-full overflow-hidden rounded-[12px] border border-[#e5e7eb] transition focus-within:border-[#0e7a6e] focus-within:ring-2 focus-within:ring-[#0e7a6e]/20">
@@ -2128,16 +2138,20 @@ export default function RegisterPage() {
                       type="number"
                       inputMode="numeric"
                       step="1"
-                      readOnly={isGroup}
+                      readOnly={isGroup || !customAmountUnlocked}
                       value={
                         isGroup
                           ? standardGroupNairaMinor !== null
                             ? String(standardGroupNairaMinor / 100)
                             : ""
-                          : customNairaAmount
+                          : customAmountUnlocked
+                            ? customNairaAmount
+                            : typeof pricesMinor.NGN === "number"
+                              ? String(pricesMinor.NGN / 100)
+                              : ""
                       }
                       onChange={(event) => {
-                        if (isGroup) return;
+                        if (isGroup || !customAmountUnlocked) return;
                         setCustomNairaAmount(event.target.value);
                         clearErr("customNairaAmount");
                       }}
@@ -2154,7 +2168,7 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              {!isGroup && currency === "NGN" && nairaChips.length > 0 && (
+              {!isGroup && currency === "NGN" && customAmountUnlocked && nairaChips.length > 0 && (
                 <div className="flex flex-wrap gap-3">
                   {nairaChips.map((chip) => (
                     <button
@@ -2222,8 +2236,8 @@ export default function RegisterPage() {
               )}
               {!isGroup && (
                 <>
-                  <SummaryRow label="Title">
-                    {gender === "male" ? "Brother" : "Sister"}
+                  <SummaryRow label="Gender">
+                    {gender === "male" ? "Male" : "Female"}
                   </SummaryRow>
                   <SummaryRow label="Attendance history">
                     {firstTime === "yes" ? "First-time" : "Returning"}

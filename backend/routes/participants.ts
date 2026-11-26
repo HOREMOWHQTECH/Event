@@ -197,6 +197,20 @@ const MAX_TICKETS = (() => {
   return Number.isInteger(value) && value > 0 ? value : 20000;
 })();
 
+// NGN payers may enter a custom contribution amount only from this moment
+// (00:00 WAT on day 2 of the event). Before that the standard fee is locked.
+const NGN_CUSTOM_AMOUNT_UNLOCK_AT = Date.parse(
+  process.env.NGN_CUSTOM_AMOUNT_UNLOCK_AT || '2026-12-09T00:00:00+01:00'
+);
+
+// Foreign currencies are locked at a flat 20 units of their own currency
+// ($20.00 / €20.00 / £20.00) per participant, regardless of ticket type price.
+const FOREIGN_LOCKED_MINOR: Record<string, number> = {
+  USD: 2000,
+  EUR: 2000,
+  GBP: 2000,
+};
+
 function envTicketPrices(): { currency: string; amountMinor: number }[] {
   const out: { currency: string; amountMinor: number }[] = [];
   for (const currency of CURRENCIES as readonly string[]) {
@@ -599,7 +613,10 @@ router.get('/register', async (_req: Request, res: Response) => {
     for (const currency of CURRENCIES as readonly string[]) {
       const price = ticketType?.prices?.find((entry: any) => entry.currency === currency);
       const provider = providerFor(currency);
-      if (price) pricesMinor[currency] = price.amountMinor;
+      if (price) {
+        const locked = FOREIGN_LOCKED_MINOR[currency];
+        pricesMinor[currency] = locked !== undefined ? locked : price.amountMinor;
+      }
       providerByCurrency[currency] = provider;
       currencyAvailable[currency] = !!price && providerConfigured(provider);
     }
@@ -787,12 +804,23 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     if (!ticketType || process.env.REGISTRATION_OPEN === 'false') {
       return res.status(403).json({ error: 'Online registration is closed.' });
     }
-    const price = ticketType.prices?.find((entry: any) => entry.currency === currency);
-    if (!price || !Number.isInteger(price.amountMinor)) {
-      return res.status(400).json({ error: `No price is set for ${currency}` });
+    const lockedForeignMinor = FOREIGN_LOCKED_MINOR[currency];
+    let totalMinor: number;
+    if (lockedForeignMinor !== undefined) {
+      totalMinor = lockedForeignMinor * seats;
+    } else {
+      const price = ticketType.prices?.find((entry: any) => entry.currency === currency);
+      if (!price || !Number.isInteger(price.amountMinor)) {
+        return res.status(400).json({ error: `No price is set for ${currency}` });
+      }
+      totalMinor = price.amountMinor * seats;
     }
-    let totalMinor = price.amountMinor * seats;
     if (!isGroup && currency === 'NGN' && body.customAmountMinor !== undefined) {
+      if (Date.now() < NGN_CUSTOM_AMOUNT_UNLOCK_AT) {
+        return res.status(400).json({
+          error: 'Custom contribution amounts unlock closer to the event. Please pay the standard fee.',
+        });
+      }
       const customAmountMinor = Number(body.customAmountMinor);
       const minimumContributionMinor = seats * 200_000;
       if (!Number.isInteger(customAmountMinor) || customAmountMinor < minimumContributionMinor) {
