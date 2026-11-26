@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
-import { Countdown } from "@/components/ui/countdown";
 import {
   AlertCircle,
-  CalendarDays,
+  ArrowLeft,
+  ArrowRight,
   Check,
   ChevronDown,
   CircleQuestionMark,
@@ -24,6 +25,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
+import { SITE_CONFIG } from "@/config/site";
 import {
   COUNTRIES,
   NIGERIA,
@@ -192,10 +194,10 @@ function CompletedDetails({ items }: { items: CompletedItem[] }) {
           {index > 0 && (
             <span aria-hidden="true" className="mr-1.5 hidden h-3 w-px bg-[#E5E7EB] sm:block" />
           )}
-          <Check className="h-3.5 w-3.5 shrink-0 text-[#0F6E56]" strokeWidth={2.5} aria-hidden="true" />
+          <Check className="h-3.5 w-3.5 shrink-0 text-[#0e7a6e]" strokeWidth={2.5} aria-hidden="true" />
           <span className="shrink-0">{item.label}:</span>
           <span
-            className="min-w-0 max-w-[220px] truncate font-medium text-[#111C18]"
+            className="min-w-0 max-w-[220px] truncate font-medium text-[#111827]"
             title={item.value}
           >
             {item.value}
@@ -203,7 +205,7 @@ function CompletedDetails({ items }: { items: CompletedItem[] }) {
           <button
             type="button"
             onClick={item.onEdit}
-            className="shrink-0 font-semibold text-[#0F6E56] transition-colors hover:underline"
+            className="shrink-0 font-semibold text-[#0e7a6e] transition-colors hover:underline"
             aria-label={`Edit ${item.label.toLowerCase()}`}
           >
             Edit
@@ -218,7 +220,7 @@ function SummaryRow({ label, children }: { label: string; children: React.ReactN
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3.5 text-[14px] sm:text-[15px]">
       <span className="shrink-0 text-[#6B7280]">{label}</span>
-      <span className="min-w-0 break-words text-right font-bold text-[#111C18] sm:max-w-[70%]">
+      <span className="min-w-0 break-words text-right font-bold text-[#111827] sm:max-w-[70%]">
         {children}
       </span>
     </div>
@@ -227,9 +229,9 @@ function SummaryRow({ label, children }: { label: string; children: React.ReactN
 
 function StepProgress({ step }: { step: number }) {
   return (
-    <div className="mb-4 w-full" aria-label={`Step ${step} of ${TOTAL_STEPS}`}>
+    <div className="mb-8 w-full" aria-label={`Step ${step} of ${TOTAL_STEPS}`}>
       <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[14px] font-semibold text-[#0F6E56]">
+        <span className="text-[14px] font-semibold text-[#0e7a6e]">
           Step {step} of {TOTAL_STEPS}
         </span>
         <span className="text-[14px] font-normal text-[#6B7280]">
@@ -241,7 +243,7 @@ function StepProgress({ step }: { step: number }) {
           <div
             key={i}
             className={`h-[4px] rounded-full transition-all duration-300 ${
-              i <= step ? "bg-[#0F6E56]" : "bg-[#D1D5DB]"
+              i <= step ? "bg-[#0e7a6e]" : "bg-[#e5e7eb]"
             }`}
             aria-current={i === step ? "step" : undefined}
           />
@@ -256,18 +258,21 @@ function Field({
   htmlFor,
   error,
   hint,
+  required,
   children,
 }: {
   label: string;
   htmlFor: string;
   error?: string;
   hint?: string;
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="w-full space-y-2">
-      <label htmlFor={htmlFor} className="block text-[14px] font-medium text-[#111C18]">
+      <label htmlFor={htmlFor} className="block text-[14px] font-medium text-[#111827]">
         {label}
+        {required && <span className="ml-0.5 text-rose-500">*</span>}
       </label>
       {children}
       {hint && !error && (
@@ -304,8 +309,8 @@ function ChoiceButton({
       onClick={onClick}
       className={`inline-flex min-h-[38px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13px] font-medium transition-all sm:min-h-[40px] sm:px-4 sm:text-[14px] ${
         active
-          ? "border-[#0F6E56] bg-[#0F6E56] text-white shadow-sm"
-          : "border-[#E5E7EB] bg-white text-[#111C18] hover:border-[#0F6E56]/40 hover:bg-[#F7FAF9]"
+          ? "border-[#0e7a6e] bg-[#e8f5f2] text-[#0e7a6e] shadow-sm"
+          : "border-[#E5E7EB] bg-white text-[#111827] hover:border-[#0e7a6e]/40 hover:bg-[#f9fafb]"
       }`}
     >
       {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
@@ -334,9 +339,9 @@ function ToggleRow({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-4 text-left transition hover:border-[#0F6E56]/40"
+      className="flex w-full items-center justify-between gap-4 rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-4 text-left transition hover:border-[#0e7a6e]/40"
     >
-      <span className="min-w-0 text-[14px] font-medium text-[#111C18]">
+      <span className="min-w-0 text-[14px] font-medium text-[#111827]">
         {label}
         {description && (
           <small className="mt-1 block text-[12px] font-normal leading-relaxed text-[#6B7280]">
@@ -347,7 +352,7 @@ function ToggleRow({
       <span
         aria-hidden="true"
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-          checked ? "bg-[#0F6E56]" : "bg-[#D1D5DB]"
+          checked ? "bg-[#0e7a6e]" : "bg-[#e5e7eb]"
         }`}
       >
         <span
@@ -391,7 +396,7 @@ function NumberField({
       className={`flex h-[60px] w-full items-center overflow-hidden rounded-[12px] border bg-white transition focus-within:ring-2 ${
         invalid
           ? "border-rose-500 focus-within:border-rose-500 focus-within:ring-rose-500/20"
-          : "border-[#D1D5DB] focus-within:border-[#0F6E56] focus-within:ring-[#0F6E56]/20"
+          : "border-[#e5e7eb] focus-within:border-[#0e7a6e] focus-within:ring-[#0e7a6e]/20"
       }`}
     >
       <button
@@ -400,7 +405,7 @@ function NumberField({
         aria-label={`Decrease ${label}`}
         disabled={!canDecrease}
         onClick={() => onChange(String(Math.max(min, current - 1)))}
-        className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#E5E7EB] text-[#374151] transition hover:bg-[#F4F4F2] disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#E5E7EB] text-[#374151] transition hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Minus className="h-4 w-4" />
       </button>
@@ -415,7 +420,7 @@ function NumberField({
         aria-describedby={describedBy}
         onChange={(event) => onChange(event.target.value)}
         onBlur={onBlur}
-        className="min-w-0 flex-1 bg-transparent px-2 text-center text-[16px] font-semibold text-[#111C18] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="min-w-0 flex-1 bg-transparent px-2 text-center text-[16px] font-semibold text-[#111827] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       <button
         type="button"
@@ -425,7 +430,7 @@ function NumberField({
         onClick={() =>
           onChange(String(Math.min(max ?? Number.MAX_SAFE_INTEGER, Math.max(min, current + 1))))
         }
-        className="flex h-full w-12 shrink-0 items-center justify-center border-l border-[#E5E7EB] text-[#374151] transition hover:bg-[#F4F4F2] disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-full w-12 shrink-0 items-center justify-center border-l border-[#E5E7EB] text-[#374151] transition hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Plus className="h-4 w-4" />
       </button>
@@ -456,12 +461,12 @@ function Tally({
   else text = `${current - total} over. Reduce a count so the total is ${total}.`;
 
   return (
-    <div className="rounded-[12px] border border-[#E5E7EB] bg-[#F8FAF9] p-4">
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#D1D5DB]">
+    <div className="rounded-[12px] border border-[#E5E7EB] bg-[#f8fafc] p-4">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e5e7eb]">
         <span
           aria-hidden="true"
           className={`block h-full rounded-full transition-all ${
-            error ? "bg-rose-500" : matched ? "bg-[#0F6E56]" : "bg-[#8FB8A9]"
+            error ? "bg-rose-500" : matched ? "bg-[#0e7a6e]" : "bg-[#9cc5bc]"
           }`}
           style={{ width: `${pct}%` }}
         />
@@ -473,7 +478,7 @@ function Tally({
         </p>
       ) : (
         <p aria-live="polite" className="mt-2.5 flex items-center gap-1.5 text-[13px] text-[#374151]">
-          {matched && <Check className="h-3.5 w-3.5 text-[#0F6E56]" />}
+          {matched && <Check className="h-3.5 w-3.5 text-[#0e7a6e]" />}
           <span>{text}</span>
         </p>
       )}
@@ -629,8 +634,8 @@ function SearchableSelect({
           setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
         }}
         onKeyDown={handleKeyDown}
-        className={`h-[60px] w-full rounded-[12px] border bg-white pl-11 pr-10 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 disabled:cursor-not-allowed disabled:bg-[#F4F4F2] disabled:text-gray-500 ${
-          inputProps?.["aria-invalid"] ? "border-rose-500" : "border-[#D1D5DB]"
+        className={`h-[60px] w-full rounded-[12px] border bg-white pl-11 pr-10 text-[16px] text-[#111827] outline-none transition placeholder:text-gray-400 focus:border-[#0e7a6e] focus:ring-2 focus:ring-[#0e7a6e]/20 disabled:cursor-not-allowed disabled:bg-[#f4f5f7] disabled:text-gray-500 ${
+          inputProps?.["aria-invalid"] ? "border-rose-500" : "border-[#e5e7eb]"
         }`}
       />
       <button
@@ -645,7 +650,7 @@ function SearchableSelect({
           setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
           inputRef.current?.focus();
         }}
-        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-gray-500 transition hover:text-[#111C18] disabled:opacity-40"
+        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-gray-500 transition hover:text-[#111827] disabled:opacity-40"
       >
         <ChevronDown className="h-5 w-5" />
       </button>
@@ -670,8 +675,8 @@ function SearchableSelect({
                 onMouseDown={(event) => event.preventDefault()}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => commit(option)}
-                className={`flex cursor-pointer items-center gap-2 rounded-[8px] px-3 py-2.5 text-[14px] text-[#111C18] transition ${
-                  index === activeIndex ? "bg-[#EEF4F1]" : "hover:bg-[#F4F4F2]"
+                className={`flex cursor-pointer items-center gap-2 rounded-[8px] px-3 py-2.5 text-[14px] text-[#111827] transition ${
+                  index === activeIndex ? "bg-[#e8f5f2]" : "hover:bg-[#f4f5f7]"
                 }`}
               >
                 {renderOption ? renderOption(option) : option}
@@ -694,47 +699,39 @@ function RegistrationLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="register-premium-bg flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[#f4f5f7]">
       <Header />
-
-      <main className="flex flex-1 flex-col items-center justify-start px-4 pb-10 pt-4 sm:pb-14 sm:pt-6">
-        <div className="flex w-full max-w-[700px] flex-col items-center">
-          <StepProgress step={step} />
-          <div className="register-premium-card w-full rounded-[24px] bg-white">
-            <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-t-[24px] border-b border-[#EEF2F0] bg-white/80 px-3 py-3 sm:gap-3 sm:px-12 sm:py-4">
-              <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
-                <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.06em] text-[#0F6E56] sm:text-[13px] sm:tracking-[0.12em]">
-                  IHGC 2026
-                </span>
-                <span aria-hidden className="hidden h-3 w-px bg-[#D1D5DB] sm:block" />
-                <div className="flex min-w-0 items-center gap-1 text-[12px] font-medium text-[#6B7280] sm:gap-2 sm:text-[13px]">
-                  <span className="whitespace-nowrap sm:hidden">In</span>
-                  <span className="hidden whitespace-nowrap sm:inline">Begins in</span>
-                  <span className="min-w-0 [&>div]:gap-1 sm:[&>div]:gap-1.5">
-                    <Countdown compact onLight />
-                  </span>
-                </div>
-              </div>
-              <Link
-                href="/programme"
-                aria-label="View schedule"
-                title="View schedule"
-                className="inline-flex shrink-0 items-center whitespace-nowrap text-[13px] font-semibold text-[#0F6E56] hover:underline"
-              >
-                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
-                <span className="hidden sm:ml-1.5 sm:inline">View schedule</span>
-              </Link>
-            </div>
-            <div className="p-6 sm:p-12">{children}</div>
-          </div>
-          {hintBelowCard && (
-            <div className="mt-6 text-center text-[13px] text-[#6B7280] sm:text-[14px]">
-              {hintBelowCard}
-            </div>
-          )}
+      <div className="flex flex-1 flex-col items-center px-4 pb-16 pt-28 sm:px-4 sm:pb-20 sm:pt-32">
+        <div className="flex w-full max-w-[520px] flex-col items-center">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <Image
+            src={SITE_CONFIG.logo.src}
+            alt={SITE_CONFIG.logo.alt}
+            width={SITE_CONFIG.logo.width}
+            height={SITE_CONFIG.logo.height}
+            className="h-12 w-auto"
+            priority
+          />
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#111827] sm:text-[28px]">
+            IHGC 2026
+          </h1>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            International Holiness General Conference
+          </p>
         </div>
-      </main>
 
+        <div className="w-full rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-[0_24px_60px_-24px_rgba(17,24,39,0.18)] sm:p-8">
+          <StepProgress step={step} />
+          {children}
+        </div>
+
+        {hintBelowCard && (
+          <div className="mt-6 text-center text-[13px] text-[#6B7280] sm:text-[14px]">
+            {hintBelowCard}
+          </div>
+        )}
+        </div>
+      </div>
       <Footer />
     </div>
   );
@@ -1365,6 +1362,7 @@ export default function RegisterPage() {
         htmlFor="field-country"
         label={isGroup ? "Group country" : "Country of residence"}
         error={fieldErrors.country}
+        required
         hint={isGroup ? "Applied to every participant in this group." : undefined}
       >
         <SearchableSelect
@@ -1406,6 +1404,7 @@ export default function RegisterPage() {
               : "State / region (optional)"
         }
         error={fieldErrors.state}
+        required={isNigeria || requiresForeignState}
         hint={
           statesLoading
             ? "Loading states and regions..."
@@ -1492,21 +1491,27 @@ export default function RegisterPage() {
         <button
           type="button"
           onClick={prevStep}
-          className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] transition hover:text-black"
+          className="inline-flex items-center gap-1.5 py-2.5 pl-1 pr-2 text-[14px] font-semibold text-[#111827] transition hover:text-black"
         >
+          <ArrowLeft className="h-4 w-4" />
           Back
         </button>
       ) : (
-        <Link href="/" className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] hover:text-black">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 py-2.5 pl-1 pr-2 text-[14px] font-semibold text-[#111827] hover:text-black"
+        >
+          <ArrowLeft className="h-4 w-4" />
           Back to Home
         </Link>
       )}
       <button
         type="button"
         onClick={nextStep}
-        className="h-[44px] rounded-[10px] bg-[#0F6E56] px-5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0D5E49]"
+        className="inline-flex h-[46px] items-center gap-1.5 rounded-[12px] bg-[#0E1020] px-6 text-[14px] font-semibold text-white transition-colors hover:bg-[#1A1D36]"
       >
         {nextLabel}
+        <ArrowRight className="h-4 w-4" />
       </button>
     </div>
   );
@@ -1528,7 +1533,7 @@ export default function RegisterPage() {
         {step === 1 && (
           <>
             <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111827] sm:text-[34px]">
                 Registration category
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
@@ -1559,13 +1564,13 @@ export default function RegisterPage() {
                     onClick={() => switchMode(option.group)}
                     className={`rounded-[12px] border p-5 text-left transition-all ${
                       isGroup === option.group
-                        ? "border-[#0F6E56] bg-[#EEF4F1]/60 ring-2 ring-[#0F6E56]/15"
-                        : "border-[#D1D5DB] bg-white hover:border-gray-400"
+                        ? "border-[#0e7a6e] bg-[#e8f5f2]/60 ring-2 ring-[#0e7a6e]/15"
+                        : "border-[#e5e7eb] bg-white hover:border-gray-400"
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Icon className="h-[18px] w-[18px] shrink-0 text-[#0F6E56]" aria-hidden="true" />
-                      <div className="text-[16px] font-semibold text-[#111C18]">{option.title}</div>
+                      <Icon className="h-[18px] w-[18px] shrink-0 text-[#0e7a6e]" aria-hidden="true" />
+                      <div className="text-[16px] font-semibold text-[#111827]">{option.title}</div>
                     </div>
                     <div className="mt-1 text-[13px] text-[#6B7280]">{option.desc}</div>
                   </button>
@@ -1581,7 +1586,7 @@ export default function RegisterPage() {
         {step === 2 && (
           <>
             <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111827] sm:text-[34px]">
                 {isGroup ? "Group details" : "About you"}
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
@@ -1604,7 +1609,7 @@ export default function RegisterPage() {
             {isGroup ? (
               <div className="space-y-5 pt-2">
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <Field htmlFor="field-groupName" label="Chapter / zone name" error={fieldErrors.groupName}>
+                  <Field htmlFor="field-groupName" label="Chapter / zone name" error={fieldErrors.groupName} required>
                     <input
                       id="field-groupName"
                       type="text"
@@ -1615,7 +1620,7 @@ export default function RegisterPage() {
                         clearErr("groupName");
                       }}
                       {...fp("groupName")}
-                      className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                      className="h-[60px] w-full rounded-[12px] border border-[#e5e7eb] px-4 text-[16px] text-[#111827] outline-none transition placeholder:text-gray-400 focus:border-[#0e7a6e] focus:ring-2 focus:ring-[#0e7a6e]/20"
                     />
                   </Field>
 
@@ -1623,6 +1628,7 @@ export default function RegisterPage() {
                     htmlFor="field-seats"
                     label="Number of participants"
                     error={fieldErrors.seats}
+                    required
                     hint="Everyone attending, children included."
                   >
                     <NumberField
@@ -1782,7 +1788,7 @@ export default function RegisterPage() {
               </div>
             ) : (
               <div className="grid gap-6 pt-2 sm:grid-cols-2">
-                <Field htmlFor="field-gender" label="Title / Gender" error={fieldErrors.gender}>
+                <Field htmlFor="field-gender" label="Title / Gender" error={fieldErrors.gender} required>
                   <div id="field-gender" role="group" aria-label="Gender" className="flex flex-wrap gap-2">
                     {(["male", "female"] as const).map((value) => (
                       <ChoiceButton
@@ -1799,7 +1805,7 @@ export default function RegisterPage() {
                   </div>
                 </Field>
 
-                <Field htmlFor="field-firstTime" label="Attendance history" error={fieldErrors.firstTime}>
+                <Field htmlFor="field-firstTime" label="Attendance history" error={fieldErrors.firstTime} required>
                   <div id="field-firstTime" role="group" aria-label="First timer or invitee" className="flex flex-wrap gap-2">
                     {(["no", "yes"] as const).map((value) => (
                       <ChoiceButton
@@ -1827,7 +1833,7 @@ export default function RegisterPage() {
         {step === 3 && (
           <>
             <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111827] sm:text-[34px]">
                 {isGroup ? "Group leader details" : "Your contact details"}
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
@@ -1843,7 +1849,7 @@ export default function RegisterPage() {
               {!isGroup && locationFields}
 
               <div className="sm:col-span-2">
-                <Field htmlFor="field-payerName" label="Full name" error={fieldErrors.payerName}>
+                <Field htmlFor="field-payerName" label="Full name" error={fieldErrors.payerName} required>
                   <div className="relative">
                     <input
                       id="field-payerName"
@@ -1856,10 +1862,10 @@ export default function RegisterPage() {
                         clearErr("payerName");
                       }}
                       {...fp("payerName")}
-                      className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                      className="h-[60px] w-full rounded-[12px] border border-[#e5e7eb] px-4 pr-11 text-[16px] text-[#111827] outline-none transition placeholder:text-gray-400 focus:border-[#0e7a6e] focus:ring-2 focus:ring-[#0e7a6e]/20"
                     />
                     {payerName.trim() && !fieldErrors.payerName && (
-                      <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                      <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0e7a6e]" />
                     )}
                   </div>
                 </Field>
@@ -1869,6 +1875,7 @@ export default function RegisterPage() {
                 htmlFor="field-payerPhone"
                 label="Phone number"
                 error={fieldErrors.payerPhone}
+                required
                 hint={`${selectedFlag} ${selectedDial} for ${selectedCountry || "your selected country"}`}
               >
                 <div className="relative">
@@ -1886,15 +1893,15 @@ export default function RegisterPage() {
                       clearErr("payerPhone");
                     }}
                     {...fp("payerPhone")}
-                    className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] pl-12 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                    className="h-[60px] w-full rounded-[12px] border border-[#e5e7eb] pl-12 pr-11 text-[16px] text-[#111827] outline-none transition placeholder:text-gray-400 focus:border-[#0e7a6e] focus:ring-2 focus:ring-[#0e7a6e]/20"
                   />
                   {phoneValid && !fieldErrors.payerPhone && (
-                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0e7a6e]" />
                   )}
                 </div>
               </Field>
 
-              <Field htmlFor="field-payerEmail" label="Email address" error={fieldErrors.payerEmail}>
+              <Field htmlFor="field-payerEmail" label="Email address" error={fieldErrors.payerEmail} required>
                 <div className="relative">
                   <input
                     id="field-payerEmail"
@@ -1909,10 +1916,10 @@ export default function RegisterPage() {
                       clearErr("payerEmail");
                     }}
                     {...fp("payerEmail")}
-                    className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                    className="h-[60px] w-full rounded-[12px] border border-[#e5e7eb] px-4 pr-11 text-[16px] text-[#111827] outline-none transition placeholder:text-gray-400 focus:border-[#0e7a6e] focus:ring-2 focus:ring-[#0e7a6e]/20"
                   />
                   {emailValid && !fieldErrors.payerEmail && (
-                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0e7a6e]" />
                   )}
                 </div>
               </Field>
@@ -1932,8 +1939,8 @@ export default function RegisterPage() {
                   description="A parent or guardian's details are needed."
                 />
                 {isMinor && (
-                  <div className="grid gap-5 rounded-[12px] border border-[#D1E5DE] bg-[#EEF4F1]/70 p-5 sm:grid-cols-2">
-                    <Field htmlFor="field-guardianName" label="Parent / guardian name" error={fieldErrors.guardianName}>
+                  <div className="grid gap-5 rounded-[12px] border border-[#d1d5db] bg-[#e8f5f2]/70 p-5 sm:grid-cols-2">
+                    <Field htmlFor="field-guardianName" label="Parent / guardian name" error={fieldErrors.guardianName} required>
                       <input
                         id="field-guardianName"
                         type="text"
@@ -1944,10 +1951,10 @@ export default function RegisterPage() {
                           clearErr("guardianName");
                         }}
                         {...fp("guardianName")}
-                        className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] bg-white px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                        className="h-[60px] w-full rounded-[12px] border border-[#e5e7eb] bg-white px-4 text-[16px] text-[#111827] outline-none transition placeholder:text-gray-400 focus:border-[#0e7a6e] focus:ring-2 focus:ring-[#0e7a6e]/20"
                       />
                     </Field>
-                    <Field htmlFor="field-guardianPhone" label="Parent / guardian phone" error={fieldErrors.guardianPhone}>
+                    <Field htmlFor="field-guardianPhone" label="Parent / guardian phone" error={fieldErrors.guardianPhone} required>
                       <input
                         id="field-guardianPhone"
                         type="tel"
@@ -1958,7 +1965,7 @@ export default function RegisterPage() {
                           clearErr("guardianPhone");
                         }}
                         {...fp("guardianPhone")}
-                        className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] bg-white px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                        className="h-[60px] w-full rounded-[12px] border border-[#e5e7eb] bg-white px-4 text-[16px] text-[#111827] outline-none transition placeholder:text-gray-400 focus:border-[#0e7a6e] focus:ring-2 focus:ring-[#0e7a6e]/20"
                       />
                     </Field>
                   </div>
@@ -1974,7 +1981,7 @@ export default function RegisterPage() {
         {step === 4 && (
           <>
             <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111827] sm:text-[34px]">
                 {isGroup ? "How will the group attend?" : "How will you attend?"}
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
@@ -2048,7 +2055,7 @@ export default function RegisterPage() {
         {step === 5 && (
           <>
             <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">Payment</h1>
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111827] sm:text-[34px]">Payment</h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
                 Choose the currency you want to pay in. Standard prices are per participant.
               </p>
@@ -2064,7 +2071,7 @@ export default function RegisterPage() {
 
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
-                <label className="block text-[14px] font-medium text-[#111C18]">Currency</label>
+                <label className="block text-[14px] font-medium text-[#111827]">Currency</label>
                 <div className="flex flex-wrap gap-2.5 sm:gap-3">
                   {CURRENCY_LIST.map((code) => {
                     const price = pricesMinor[code];
@@ -2080,8 +2087,8 @@ export default function RegisterPage() {
                         }}
                         className={`flex h-[50px] min-w-[92px] flex-col items-center justify-center rounded-[12px] px-3 text-[14px] font-semibold transition-all disabled:cursor-wait disabled:opacity-60 ${
                           selected
-                            ? "bg-[#0F6E56] text-white shadow-sm"
-                            : "border border-[#D1D5DB] bg-white text-[#374151] hover:border-gray-400"
+                            ? "bg-[#0e7a6e] text-white shadow-sm"
+                            : "border border-[#e5e7eb] bg-white text-[#374151] hover:border-gray-400"
                         }`}
                         title={CURRENCIES[code].label}
                       >
@@ -2105,14 +2112,15 @@ export default function RegisterPage() {
                   htmlFor="field-customNairaAmount"
                   label="Registration amount"
                   error={fieldErrors.customNairaAmount}
+                  required
                   hint={
                     isGroup
                       ? "Calculated automatically from the standard price and your participant count."
                       : `Minimum is ${formatMoneyMinor(minimumNairaMinor, "NGN")}.`
                   }
                 >
-                  <div className="flex h-[60px] w-full overflow-hidden rounded-[12px] border border-[#D1D5DB] transition focus-within:border-[#0F6E56] focus-within:ring-2 focus-within:ring-[#0F6E56]/20">
-                    <span className="flex w-[54px] shrink-0 items-center justify-center border-r border-[#E5E7EB] bg-[#F4F4F2] text-[18px] font-bold text-[#111C18]">
+                  <div className="flex h-[60px] w-full overflow-hidden rounded-[12px] border border-[#e5e7eb] transition focus-within:border-[#0e7a6e] focus-within:ring-2 focus-within:ring-[#0e7a6e]/20">
+                    <span className="flex w-[54px] shrink-0 items-center justify-center border-r border-[#E5E7EB] bg-[#f4f5f7] text-[18px] font-bold text-[#111827]">
                       ₦
                     </span>
                     <input
@@ -2134,12 +2142,12 @@ export default function RegisterPage() {
                         clearErr("customNairaAmount");
                       }}
                       {...fp("customNairaAmount")}
-                      className="min-w-0 flex-1 bg-white px-4 text-[18px] font-bold text-[#111C18] outline-none sm:text-[20px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="min-w-0 flex-1 bg-white px-4 text-[18px] font-bold text-[#111827] outline-none sm:text-[20px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                   </div>
                 </Field>
               ) : (
-                <div className="rounded-[12px] border border-[#E5E7EB] bg-[#F8FAF9] p-4 text-[14px] text-[#374151]">
+                <div className="rounded-[12px] border border-[#E5E7EB] bg-[#f8fafc] p-4 text-[14px] text-[#374151]">
                   {typeof unitMinor === "number"
                     ? `You will pay ${formatMoneyMinor(unitMinor, currency)} per participant in ${currency}.`
                     : `The ${currency} price is not available right now.`}
@@ -2158,8 +2166,8 @@ export default function RegisterPage() {
                       }}
                       className={`h-[46px] rounded-[12px] px-5 text-[14px] font-bold transition-all ${
                         customNairaMinor === chip.minor
-                          ? "bg-[#0F6E56] text-white shadow-sm"
-                          : "border border-[#D1D5DB] bg-white text-[#374151] hover:border-gray-400"
+                          ? "bg-[#0e7a6e] text-white shadow-sm"
+                          : "border border-[#e5e7eb] bg-white text-[#374151] hover:border-gray-400"
                       }`}
                     >
                       {chip.label} {formatMoneyMinor(chip.minor, "NGN")}
@@ -2191,7 +2199,7 @@ export default function RegisterPage() {
         {step === TOTAL_STEPS && (
           <>
             <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111827] sm:text-[34px]">
                 Review and confirm
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
@@ -2252,12 +2260,12 @@ export default function RegisterPage() {
 
             <div className="flex items-baseline justify-between border-t border-[#E5E7EB] pb-2 pt-4">
               <div>
-                <div className="text-[17px] font-bold text-[#111C18] sm:text-[18px]">Total payable</div>
+                <div className="text-[17px] font-bold text-[#111827] sm:text-[18px]">Total payable</div>
                 <div className="mt-0.5 text-[12px] text-[#6B7280] sm:text-[13px]">
                   Includes all event materials and pass
                 </div>
               </div>
-              <div className="text-[34px] font-extrabold tracking-tight text-[#111C18] sm:text-[40px]">
+              <div className="text-[34px] font-extrabold tracking-tight text-[#111827] sm:text-[40px]">
                 {formattedTotal}
               </div>
             </div>
@@ -2274,12 +2282,12 @@ export default function RegisterPage() {
                     setConsent(event.target.checked);
                     clearErr("consent");
                   }}
-                  className="mt-0.5 h-5 w-5 rounded border-gray-300 accent-[#0F6E56] focus:ring-[#0F6E56]"
+                  className="mt-0.5 h-5 w-5 rounded border-gray-300 accent-[#0e7a6e] focus:ring-[#0e7a6e]"
                 />
                 <span className="text-[13px] leading-relaxed text-[#6B7280] sm:text-[14px]">
                   I understand that registration fees are non-refundable. I consent to personal data processing
-                  under the <Link href="/privacy" className="font-medium text-[#0F6E56] underline">Privacy Policy</Link>{" "}
-                  and <Link href="/terms" className="font-medium text-[#0F6E56] underline">Terms</Link>.
+                  under the <Link href="/privacy" className="font-medium text-[#0e7a6e] underline">Privacy Policy</Link>{" "}
+                  and <Link href="/terms" className="font-medium text-[#0e7a6e] underline">Terms</Link>.
                 </span>
               </label>
               {fieldErrors.consent && (
@@ -2354,14 +2362,15 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] transition hover:text-black"
+                className="inline-flex items-center gap-1.5 py-2.5 pl-1 pr-2 text-[14px] font-semibold text-[#111827] transition hover:text-black"
               >
+                <ArrowLeft className="h-4 w-4" />
                 Back
               </button>
               <button
                 type="submit"
                 disabled={submitDisabled}
-                className="inline-flex h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-[#0F6E56] px-5 text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0D5E49] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-[46px] items-center justify-center gap-2 whitespace-nowrap rounded-[12px] bg-[#0E1020] px-6 text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-[#1A1D36] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Lock className="h-4 w-4" />
                 {loading
