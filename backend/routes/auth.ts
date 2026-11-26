@@ -66,7 +66,8 @@ export function requireRole(...roles: string[]) {
       res.status(401).json({ error: 'Unauthenticated' });
       return;
     }
-    if (!roles.includes(req.staff.role)) {
+    // Admin is a superuser: every staff-protected route stays available.
+    if (req.staff.role !== 'admin' && !roles.includes(req.staff.role)) {
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
@@ -377,7 +378,7 @@ router.post(
         username: String(username).trim().toLowerCase(),
         email: email ? String(email).trim().toLowerCase() : null,
         passwordHash,
-        role: role || 'attendant',
+        role: role || 'staff',
         isActive: true,
       });
 
@@ -419,7 +420,7 @@ router.post(
 router.get(
   '/auth/staff',
   authenticateStaff,
-  requireRole('admin', 'supervisor'),
+  requireRole('admin'),
   async (_req: AuthRequest, res: Response) => {
     try {
       const staff = await StaffUser.find()

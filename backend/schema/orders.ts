@@ -115,7 +115,7 @@ const orderSchema = new mongoose.Schema<OrderDoc>(
     },
     state: {
       type: String,
-      maxlength: 64,
+      maxlength: 128,
       trim: true,
       default: null,
     },
@@ -155,7 +155,7 @@ const orderSchema = new mongoose.Schema<OrderDoc>(
       type: Boolean,
       default: false,
     },
-    // Group KPI data. Counts cover every paid seat, including children.
+    // Group KPI data. Counts cover every paid participant, including children.
     genderCounts: {
       male: { type: Number, min: 0, default: 0 },
       female: { type: Number, min: 0, default: 0 },
@@ -178,7 +178,7 @@ const orderSchema = new mongoose.Schema<OrderDoc>(
       min: 0,
       default: 0,
     },
-    // Number of paid seats this order holds; powers the per-ticket-type cap.
+    // Number of paid participants this order holds; powers the per-ticket-type cap.
     seats: {
       type: Number,
       min: 0,

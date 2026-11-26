@@ -24,6 +24,7 @@ interface AuthRequest extends Request {
 router.post(
   '/scans',
   authenticateStaff,
+  requireRole('staff'),
   async (req: AuthRequest, res: Response) => {
     try {
       const body = req.body || {};
@@ -78,7 +79,7 @@ router.post(
 router.get(
   '/scans/participant/:id',
   authenticateStaff,
-  requireRole('supervisor', 'admin'),
+  requireRole('admin'),
   async (req: AuthRequest, res: Response) => {
     try {
       if (!mongoose.isValidObjectId(req.params.id)) {
@@ -102,7 +103,7 @@ router.get(
 router.get(
   '/scans/stand/:standId/today',
   authenticateStaff,
-  requireRole('supervisor', 'admin'),
+  requireRole('admin'),
   async (req: AuthRequest, res: Response) => {
     try {
       const startOfDay = new Date();
@@ -128,7 +129,7 @@ router.get(
 router.get(
   '/scans/conflicts',
   authenticateStaff,
-  requireRole('supervisor', 'admin'),
+  requireRole('admin'),
   async (_req: AuthRequest, res: Response) => {
     try {
       const conflicts = await ScanEvent.find({
@@ -162,7 +163,7 @@ router.get(
 router.get(
   '/scans/stats',
   authenticateStaff,
-  requireRole('supervisor', 'admin'),
+  requireRole('admin'),
   async (req: AuthRequest, res: Response) => {
     try {
       const match: Record<string, unknown> = {};

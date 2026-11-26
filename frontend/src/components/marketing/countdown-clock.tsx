@@ -167,12 +167,22 @@ export function CountdownClock({
   endsAt,
   theme,
   title,
+  show3DClock = true,
+  showFlip = true,
+  className,
+  clockClassName,
 }: {
   startsAt?: DateLike;
   endsAt?: DateLike;
   theme: string;
   /** Conference name printed on the clock dial */
   title?: string;
+  /** Lets the hero place the 3D clock beside the name/theme plates. */
+  show3DClock?: boolean;
+  /** Lets the hero keep the flip tiles in their own row on larger screens. */
+  showFlip?: boolean;
+  className?: string;
+  clockClassName?: string;
 }) {
   const { target, days, hours, minutes, seconds } = useConferenceCountdown(startsAt, endsAt);
 
@@ -180,35 +190,39 @@ export function CountdownClock({
     title ?? (SITE_CONFIG as { eventTitle?: string }).eventTitle ?? "International Holiness General Conference 2026";
 
   return (
-    <div className="cc-wrap">
+    <div className={className ?? "cc-wrap"}>
       <style dangerouslySetInnerHTML={{ __html: FC_CSS }} />
 
       <div data-countdown className="cc-body gap-4 sm:flex-row sm:gap-6">
         {/* 3D clock: your logo in the middle, conference name + theme around the dial */}
-        <div data-clock-3d className="relative z-[2] order-2 shrink-0">
-          <span aria-hidden className="cc-clock-glow" />
-          <ConferenceClock3D
-            target={target}
-            title={dialTitle}
-            theme={theme}
-            logoSrc={SITE_CONFIG.logo.src}
-            className="h-[168px] w-[168px] sm:h-[200px] sm:w-[200px]"
-          />
-        </div>
+        {show3DClock && (
+          <div data-clock-3d className="relative z-[2] order-2 shrink-0">
+            <span aria-hidden className="cc-clock-glow" />
+            <ConferenceClock3D
+              target={target}
+              title={dialTitle}
+              theme={theme}
+              logoSrc={SITE_CONFIG.logo.src}
+              className={clockClassName ?? "h-[168px] w-[168px] sm:h-[200px] sm:w-[200px]"}
+            />
+          </div>
+        )}
 
         {/* Flip countdown: above the clock on phones, to its left on desktop */}
-        <div className="relative z-[2] order-1 w-full min-w-0 flex-1">
-          <div className="fc-grid mx-auto sm:mx-0" aria-hidden>
-            <FlipUnit value={days} label="Days" unit="days" />
-            <FlipUnit value={hours} label="Hours" unit="hours" />
-            <FlipUnit value={minutes} label="Minutes" unit="minutes" />
-            <FlipUnit value={seconds} label="Seconds" unit="seconds" />
-          </div>
+        {showFlip && (
+          <div className="relative z-[2] order-1 w-full min-w-0 flex-1">
+            <div className="fc-grid mx-auto sm:mx-0" aria-hidden>
+              <FlipUnit value={days} label="Days" unit="days" />
+              <FlipUnit value={hours} label="Hours" unit="hours" />
+              <FlipUnit value={minutes} label="Minutes" unit="minutes" />
+              <FlipUnit value={seconds} label="Seconds" unit="seconds" />
+            </div>
 
-          <span className="sr-only" role="timer">
-            {days} days, {hours} hours, {minutes} minutes and {seconds} seconds
-          </span>
-        </div>
+            <span className="sr-only" role="timer">
+              {days} days, {hours} hours, {minutes} minutes and {seconds} seconds
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

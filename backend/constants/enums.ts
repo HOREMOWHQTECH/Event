@@ -155,11 +155,6 @@ export type ScanResult = (typeof SCAN_RESULTS)[number];
 // STAFF
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const STAFF_ROLES = [
-  'attendant',
-  'supervisor',
-  'finance',
-  'admin',
-] as const;
+export const STAFF_ROLES = ['staff', 'admin'] as const;
 
 export type StaffRole = (typeof STAFF_ROLES)[number];

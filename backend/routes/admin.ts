@@ -33,7 +33,7 @@ function tokenDigest(value: string, secret: string): string {
 router.get(
   '/admin/dashboard-stats',
   authenticateStaff,
-  requireRole('admin', 'supervisor', 'finance'),
+  requireRole('admin'),
   async (_req: Request, res: Response) => {
     try {
       const empty = {
@@ -191,10 +191,27 @@ router.get(
             $facet: {
               states: [
                 { $match: { state: { $ne: null } } },
-                { $group: { _id: '$state', total: { $sum: '$seats' } } },
-                { $sort: { total: -1, _id: 1 } },
+                {
+                  $group: {
+                    _id: { nation: '$nation', state: '$state' },
+                    total: { $sum: '$seats' },
+                  },
+                },
+                { $sort: { total: -1, '_id.state': 1 } },
                 { $limit: 12 },
-                { $project: { name: '$_id', total: 1, _id: 0 } },
+                {
+                  $project: {
+                    name: {
+                      $cond: [
+                        { $eq: ['$_id.nation', 'Nigeria'] },
+                        '$_id.state',
+                        { $concat: ['$_id.state', ' · ', '$_id.nation'] },
+                      ],
+                    },
+                    total: 1,
+                    _id: 0,
+                  },
+                },
               ],
               nations: [
                 { $group: { _id: '$nation', total: { $sum: '$seats' } } },
@@ -291,7 +308,7 @@ router.get(
 router.get(
   '/admin/participants',
   authenticateStaff,
-  requireRole('admin', 'supervisor', 'attendant'),
+  requireRole('staff'),
   async (_req: Request, res: Response) => {
     try {
       const participants = await Participant.find({ deletedAt: null })
@@ -321,8 +338,8 @@ async function paymentsHandler(_req: Request, res: Response) {
   }
 }
 
-router.get('/admin/payments', authenticateStaff, requireRole('admin', 'supervisor', 'finance'), paymentsHandler);
-router.get('/admin/orders', authenticateStaff, requireRole('admin', 'supervisor', 'finance'), paymentsHandler);
+router.get('/admin/payments', authenticateStaff, requireRole('admin'), paymentsHandler);
+router.get('/admin/orders', authenticateStaff, requireRole('admin'), paymentsHandler);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/admin/tickets/:reference
@@ -330,7 +347,7 @@ router.get('/admin/orders', authenticateStaff, requireRole('admin', 'supervisor'
 router.get(
   '/admin/tickets/:reference',
   authenticateStaff,
-  requireRole('admin', 'supervisor', 'finance'),
+  requireRole('admin'),
   async (req: Request, res: Response) => {
     try {
       const order: any = await Order.findOne({ reference: req.params.reference, status: 'paid' }).lean();
@@ -379,7 +396,7 @@ router.get(
 router.post(
   '/admin/scan',
   authenticateStaff,
-  requireRole('admin', 'supervisor', 'attendant'),
+  requireRole('staff'),
   async (req: Request, res: Response) => {
     try {
       const response = await recordGateScan({

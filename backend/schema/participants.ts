@@ -102,7 +102,7 @@ const groupSchema = new mongoose.Schema(
     },
     state: {
       type: String,
-      maxlength: 64,
+      maxlength: 128,
       trim: true,
     },
     totalSeats: {
@@ -214,7 +214,7 @@ const participantSchema = new mongoose.Schema(
     },
     state: {
       type: String,
-      maxlength: 64,
+      maxlength: 128,
       trim: true,
     },
     chapterZone: {

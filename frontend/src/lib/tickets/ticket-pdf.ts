@@ -231,7 +231,7 @@ export async function renderGroupTicketCanvas(
 
   ctx.fillStyle = "#6B7280";
   ctx.font = `600 28px ${FONT}`;
-  ctx.fillText("PAID SEATS", 540, 510);
+  ctx.fillText("PAID PARTICIPANTS", 540, 510);
   ctx.fillStyle = "#0E7A6E";
   fitText(ctx, String(group.totalSeats), contentWidth, 56, 800, 32);
   ctx.fillText(String(group.totalSeats), 540, 575);
@@ -245,7 +245,7 @@ export async function renderGroupTicketCanvas(
     ctx,
     contentWidth,
     "Scan this group QR once to check in every paid participant.",
-    "The group QR covers children and all claimed seats. Do not share this code."
+    "The group QR covers children and all paid participants. Do not share this code."
   );
   return canvas;
 }

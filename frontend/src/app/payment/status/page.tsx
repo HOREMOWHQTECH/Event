@@ -179,7 +179,7 @@ function TicketCard({ ticket, bundle }: { ticket: Ticket; bundle: TicketBundle }
       {bundle.group && (
         <div className="px-6 pb-6 text-center text-[11px] text-gray-500">
           Group: {bundle.order.groupName || "—"} · {bundle.group.claimedSeats} of {bundle.group.totalSeats}
-          participants claimed
+          paid participants claimed
         </div>
       )}
     </div>

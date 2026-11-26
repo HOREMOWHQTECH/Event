@@ -696,8 +696,14 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
 
     const country = typeof body.country === 'string' && body.country.trim() ? body.country.trim() : 'Nigeria';
     const state = typeof body.state === 'string' && body.state.trim() ? body.state.trim() : null;
-    if (country === 'Nigeria' && !state) {
-      return res.status(400).json({ error: 'State is required for Nigerian residents' });
+    const firstTimeRegistration = isGroup ? Number(body.inviteeCount) > 0 : body.firstTime === true;
+    if (!state && (country === 'Nigeria' || firstTimeRegistration)) {
+      return res.status(400).json({
+        error:
+          country === 'Nigeria'
+            ? 'State is required for Nigerian residents'
+            : 'State or region of origin is required for first-time attendees',
+      });
     }
 
     const attendanceMode = attendanceModeOrFallback(body.attendanceMode);
@@ -815,7 +821,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
       expiresAt: now + 1000 * 60 * 30,
       payer: { name: payerName, phoneE164: payerPhone, email: payerEmail },
       country,
-      state: country === 'Nigeria' ? state : null,
+      state,
       chapterZone: null,
       attendanceMode,
       attendanceCounts,
@@ -933,7 +939,7 @@ router.post('/tickets/lookup', async (req: Request, res: Response) => {
           kind: 'group',
           name: bundle.order.groupName || `${bundle.order.reference} Group`,
           reference: bundle.order.reference,
-          identifier: `${bundle.group.totalSeats} paid seats`,
+          identifier: `${bundle.group.totalSeats} paid participants`,
           note: 'One scan checks in the whole group',
           qrToken: bundle.group.qrToken,
           bundle: safeBundle,

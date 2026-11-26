@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/session";
 
 export default async function FinanceLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const user = await requireRole("finance");
+  const user = await requireRole("admin");
   if (!user) redirect("/staff/login");
   return (
     <div className="min-h-screen bg-[#F4F5F7] text-[#111320]">

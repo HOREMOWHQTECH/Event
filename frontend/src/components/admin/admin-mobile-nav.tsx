@@ -13,9 +13,10 @@ type AdminMobileNavProps = {
     fullName: string;
     role: string;
   };
+  role?: string;
 };
 
-export function AdminMobileNav({ user }: AdminMobileNavProps) {
+export function AdminMobileNav({ user, role }: AdminMobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -70,7 +71,7 @@ export function AdminMobileNav({ user }: AdminMobileNavProps) {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black tracking-wide text-white">IHGC 2026</span>
                 <span className="rounded bg-[#8EE3D6] px-1.5 py-0.5 text-[10px] font-bold text-[#0E1020]">
-                  ADMIN
+                  {user.role === "admin" ? "ADMIN" : "STAFF"}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -88,7 +89,7 @@ export function AdminMobileNav({ user }: AdminMobileNavProps) {
             </div>
 
             <div className="flex-1 overflow-y-auto overscroll-contain">
-              <AdminNav variant="drawer" onNavigate={() => setOpen(false)} />
+              <AdminNav variant="drawer" role={role} onNavigate={() => setOpen(false)} />
             </div>
 
             <div className="space-y-1 border-t border-white/10 p-4 text-[11px]">

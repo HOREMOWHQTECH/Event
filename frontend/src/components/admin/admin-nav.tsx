@@ -7,6 +7,7 @@ import { ADMIN_NAV_ITEMS } from "@/config/admin-nav";
 
 type AdminNavProps = {
   variant?: "sidebar" | "drawer" | "strip";
+  role?: string;
   onNavigate?: () => void;
 };
 
@@ -15,13 +16,16 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AdminNav({ variant = "sidebar", onNavigate }: AdminNavProps) {
+export function AdminNav({ variant = "sidebar", role, onNavigate }: AdminNavProps) {
   const pathname = usePathname();
+  const items = ADMIN_NAV_ITEMS.filter(
+    (item) => !item.roles || (role ? item.roles.includes(role) : false)
+  );
 
   if (variant === "strip") {
     return (
       <nav aria-label="Admin sections" className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {ADMIN_NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <Link
@@ -48,7 +52,7 @@ export function AdminNav({ variant = "sidebar", onNavigate }: AdminNavProps) {
 
   return (
     <nav aria-label="Admin sections" className="space-y-1 p-3">
-      {ADMIN_NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link

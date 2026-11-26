@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { LogoutButton } from "@/components/ui/logout-button";
-import { requireRole } from "@/lib/auth/session";
+import { requireAnyRole } from "@/lib/auth/session";
 import { SITE_CONFIG } from "@/config/site";
 
 // The install manifest is only advertised inside the authenticated console.
@@ -19,10 +19,12 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireRole("admin");
+  const user = await requireAnyRole(["staff"]);
   if (!user) {
     redirect("/staff/login");
   }
+
+  const isAdmin = user.role === "admin";
 
   return (
     <div className="min-h-screen flex bg-[#F4F5F7] text-[#111320]">
@@ -36,14 +38,14 @@ export default async function AdminLayout({
                 IHGC 2026
               </span>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#8EE3D6] text-[#0E1020]">
-                ADMIN
+                {isAdmin ? "ADMIN" : "STAFF"}
               </span>
             </div>
             <ShieldCheck className="w-4 h-4 text-[#8EE3D6]" />
           </div>
 
           {/* Navigation Links */}
-          <AdminNav variant="sidebar" />
+          <AdminNav variant="sidebar" role={user.role} />
         </div>
 
         {/* Footer in Sidebar */}
@@ -65,7 +67,7 @@ export default async function AdminLayout({
         {/* Top Operational Bar */}
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white/95 px-4 backdrop-blur sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
-            <AdminMobileNav user={{ fullName: user.fullName, role: user.role }} />
+            <AdminMobileNav user={{ fullName: user.fullName, role: user.role }} role={user.role} />
             <div className="min-w-0">
               <div
                 title={SITE_CONFIG.eventTitle}
@@ -92,7 +94,7 @@ export default async function AdminLayout({
 
         {/* Mobile quick-access navigation */}
         <div className="sticky top-14 z-20 border-b border-gray-200 bg-white/95 px-3 py-2 backdrop-blur md:hidden">
-          <AdminNav variant="strip" />
+          <AdminNav variant="strip" role={user.role} />
         </div>
 
         {/* Page Content */}

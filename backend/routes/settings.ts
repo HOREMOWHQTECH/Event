@@ -276,7 +276,7 @@ router.get('/settings/public', async (_req: Request, res: Response) => {
 router.get(
   '/settings',
   authenticateStaff,
-  requireRole('admin', 'supervisor'),
+  requireRole('admin'),
   async (_req: AuthRequest, res: Response) => {
     try {
       const [settings, ministers, programme, routes] = await Promise.all([
@@ -458,7 +458,7 @@ router.put(
 router.put(
   '/settings/provider-routes/:currency',
   authenticateStaff,
-  requireRole('admin', 'finance'),
+  requireRole('admin'),
   async (req: AuthRequest, res: Response) => {
     try {
       const { currency } = req.params;

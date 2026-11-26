@@ -416,11 +416,6 @@ export function SplashScreen() {
 
   if (stage === "hidden") return null;
 
-  const finish = () => {
-    document.documentElement.dataset.intro = "done";
-    setStage("hidden");
-  };
-
   return (
     <div
       className={`intro-root fixed inset-0 z-[9999] overflow-hidden bg-[#050B16] ${
@@ -432,50 +427,43 @@ export function SplashScreen() {
       <div className="intro-vignette pointer-events-none absolute inset-0" />
       <div className="intro-grid pointer-events-none absolute inset-0" />
 
-      {/* BRAND - ALWAYS VISIBLE FROM 0s, together with Initialising */}
-      <div className="intro-brand intro-brand-visible pointer-events-none absolute inset-x-0 top-[15%] z-10 flex flex-col items-center px-6 text-center">
-        <span className="mb-5 text-[10px] font-bold uppercase tracking-[0.42em] text-[#8EE3D6]/70">
-          {LANDING_THEME.copy.introEyebrow}
-        </span>
+      {/* Brand + loading copy share the exact centre of the viewport. */}
+      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
+        <div className="intro-brand intro-brand-visible flex w-full flex-col items-center">
+          <span className="mb-5 text-[10px] font-bold uppercase tracking-[0.42em] text-[#8EE3D6]/70">
+            {LANDING_THEME.copy.introEyebrow}
+          </span>
 
-        <div className="intro-logo-tile flex h-[76px] w-[220px] items-center justify-center rounded-[4px] border border-white/10 bg-white/[0.06] shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-sm sm:h-[88px] sm:w-[260px]">
-          <Image
-            src={SITE_CONFIG.logo.src}
-            alt={SITE_CONFIG.logo.alt}
-            width={SITE_CONFIG.logo.width}
-            height={SITE_CONFIG.logo.height}
-            priority
-            className="h-10 w-auto object-contain sm:h-12"
-            style={{ width: "auto" }}
-          />
+          <div className="intro-logo-tile flex h-[76px] w-[220px] items-center justify-center sm:h-[88px] sm:w-[260px]">
+            <Image
+              src={SITE_CONFIG.logo.src}
+              alt={SITE_CONFIG.logo.alt}
+              width={SITE_CONFIG.logo.width}
+              height={SITE_CONFIG.logo.height}
+              priority
+              className="h-10 w-auto object-contain sm:h-12"
+              style={{ width: "auto" }}
+            />
+          </div>
+
+          <h1 className="mt-7 text-3xl font-extrabold uppercase tracking-[0.08em] text-white sm:text-5xl">
+            Welcome{" "}
+            <span className="text-[#8EE3D6]">to IHGC 2026</span>
+          </h1>
+          <p className="mt-3 max-w-lg text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45 sm:text-xs">
+            {LANDING_THEME.copy.welcomeSub}
+          </p>
         </div>
 
-        <h1 className="mt-7 text-3xl font-extrabold uppercase tracking-[0.08em] text-white sm:text-5xl">
-          Welcome{" "}
-          <span className="text-[#8EE3D6]">to IHGC 2026</span>
-        </h1>
-        <p className="mt-3 max-w-lg text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45 sm:text-xs">
-          {LANDING_THEME.copy.welcomeSub}
-        </p>
-      </div>
-
-      {/* INITIALISING - SHOWS TOGETHER WITH BRAND */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-[12%] z-10 flex flex-col items-center">
-        <div className="intro-progress h-px w-40 overflow-hidden bg-white/10 sm:w-56">
-          <span className="intro-progress-fill block h-full w-full bg-[#8EE3D6]" />
+        <div className="mt-8 flex w-full flex-col items-center">
+          <div className="intro-progress h-px w-40 overflow-hidden bg-white/10 sm:w-56">
+            <span className="intro-progress-fill block h-full w-full bg-[#8EE3D6]" />
+          </div>
+          <p className="mt-4 text-[9px] font-bold uppercase tracking-[0.35em] text-white/35">
+            Initialising the experience
+          </p>
         </div>
-        <p className="mt-4 text-[9px] font-bold uppercase tracking-[0.35em] text-white/35">
-          Initialising the experience
-        </p>
       </div>
-
-      <button
-        type="button"
-        onClick={finish}
-        className="absolute bottom-6 right-6 z-20 rounded-full border border-white/15 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/55 transition hover:border-[#8EE3D6]/60 hover:text-[#8EE3D6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8EE3D6]"
-      >
-        Skip intro
-      </button>
     </div>
   );
 }

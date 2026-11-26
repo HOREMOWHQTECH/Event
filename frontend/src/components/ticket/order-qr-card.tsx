@@ -10,7 +10,7 @@ interface OrderQrCardProps {
   seats?: number;
 }
 
-/** A distinct signed group capability: one scan checks in every paid seat. */
+/** A distinct signed group capability: one scan checks in every paid participant. */
 export function OrderQrCard({ orderReference, token, seats }: OrderQrCardProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
@@ -42,8 +42,8 @@ export function OrderQrCard({ orderReference, token, seats }: OrderQrCardProps) 
         </div>
         <div className="text-xs text-gray-500 leading-relaxed">
           {seats
-            ? `One scan checks in all ${seats} paid seats represented by this ticket.`
-            : "One scan checks in every paid seat represented by this ticket."}
+            ? `One scan checks in all ${seats} paid participants represented by this ticket.`
+            : "One scan checks in every paid participant represented by this ticket."}
         </div>
         <div className="text-[11px] font-mono text-gray-400">{orderReference}</div>
       </div>

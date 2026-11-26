@@ -7,7 +7,7 @@ import {
   loadTravelModel,
 } from "@/lib/travel-models";
 
-const R_VIS = 2.55;
+const R_VIS = 2.65;
 
 export function HeroBackground({
   align = "left",
@@ -123,13 +123,12 @@ export function HeroBackground({
 
       // ---------- The two flag orbits ----------
       const rings = [
-        { r: 2.18, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 17 },
-        { r: 2.44, rot: [0, 0, 0.3], speed: 0.08, count: 20 },
+        { r: 2.32, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 17 },
+        { r: 2.52, rot: [0, 0, 0.3], speed: 0.08, count: 20 },
       ];
 
       const spinners: { g: any; speed: number }[] = [];
       const textures: any[] = [];
-      const flagMeshes: any[] = [];
       const flagMaterials: any[] = [];
 
       rings.forEach((ring, ri) => {
@@ -159,7 +158,6 @@ export function HeroBackground({
           flagMaterials.push(flagFace);
           const flagEdge = new THREE.MeshStandardMaterial({ color: 0x102f4d, roughness: 0.38, metalness: 0.12 });
           const mesh = new THREE.Mesh(geo, [flagEdge, flagEdge, flagEdge, flagEdge, flagFace, flagFace]);
-          flagMeshes.push(mesh);
           const a = (i / ring.count) * Math.PI * 2;
           const anchor = new THREE.Group();
           anchor.position.set(Math.cos(a) * ring.r, 0, Math.sin(a) * ring.r);
@@ -177,12 +175,12 @@ export function HeroBackground({
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
 
-        // On desktop the globe is smaller, so the flags need a little more
-        // presence to stay readable beside the hero copy.
+        // Keep flags at their natural spacing. Scaling the plates up on
+        // desktop made neighbours overlap and look broken, so desktop only
+        // gets a stronger emissive lift for readability. The orbits sit just
+        // outside the atmosphere now, so no plate is swallowed by the globe.
         const desktop = w >= 1024;
-        const flagScale = desktop ? 1.5 : 1;
-        flagMeshes.forEach((mesh) => mesh.scale.setScalar(flagScale));
-        flagMaterials.forEach((material) => { material.emissiveIntensity = desktop ? 0.28 : 0.12; });
+        flagMaterials.forEach((material) => { material.emissiveIntensity = desktop ? 0.32 : 0.12; });
 
         const vh = 2 * Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
         const vw = vh * camera.aspect;
@@ -205,7 +203,10 @@ export function HeroBackground({
           const diameter = Math.max(140, Math.min((freeW - gap * 2) * 0.66, h * 0.55));
           const cx = (freeLeft + freeRight) / 2;
           const half = diameter / 2 + 12;
-          const cy = Math.min(h - half, Math.max(half, h * (0.5 - desktopLift / 100)));
+          // From 1032px up, sit the globe in the true vertical middle so it
+          // lines up with the gap between the hero plates and countdown tiles.
+          const lift = w >= 1032 ? 0 : desktopLift;
+          const cy = Math.min(h - half, Math.max(half, h * (0.5 - lift / 100)));
           const pxPerUnit = h / vh;
           const s = diameter / (2 * R_VIS * pxPerUnit);
           world.scale.setScalar(s);
@@ -316,11 +317,11 @@ export function HeroBackground({
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">
-      <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">
-        <div ref={posterRef} className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]" />
+      <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] md:h-[360px] lg:inset-0 lg:h-auto">
+        <div ref={posterRef} className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 md:h-[min(50vw,220px)] md:w-[min(50vw,220px)] lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]" />
         <div ref={hostRef} className="absolute inset-0" />
       </div>
-      <div className="absolute inset-x-0 top-[270px] sm:top-[370px] h-[100px] bg-gradient-to-b from-transparent to-[#0E1020] lg:hidden" />
+      <div className="absolute inset-x-0 top-[270px] sm:top-[370px] md:top-[290px] h-[100px] bg-gradient-to-b from-transparent to-[#0E1020] lg:hidden" />
       <div className="hidden lg:block absolute inset-0 bg-gradient-to-l from-[#0E1020]/90 via-[#0E1020]/35 to-transparent" />
     </div>
   );

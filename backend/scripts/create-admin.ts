@@ -23,7 +23,7 @@ const StaffUserSchema = new Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, unique: true, sparse: true },
   passwordHash: { type: String, required: true, select: false },
-  role: { type: String, required: true, default: 'attendant' },
+  role: { type: String, required: true, default: 'staff' },
   isActive: { type: Boolean, default: true },
   totpEnabled: { type: Boolean, default: false },
   totpSecret: { type: String, select: false },

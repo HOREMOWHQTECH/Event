@@ -79,7 +79,7 @@ export default async function TicketPage({
             </div>
           </div>
 
-          {/* Group pass — one scan checks in every paid seat, with PDF download. */}
+          {/* Group pass — one scan checks in every paid participant, with PDF download. */}
           {group?.qrToken && <GroupTicketCard group={group} order={order} />}
 
           {/* Render individual tickets only when there is no group capability. */}

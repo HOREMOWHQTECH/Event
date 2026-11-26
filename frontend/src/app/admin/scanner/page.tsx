@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminScannerPage() {
-  const user = await requireAnyRole(["attendant", "supervisor"]);
+  const user = await requireAnyRole(["staff"]);
   if (!user) redirect("/staff/login");
 
   return <ScannerInterface />;

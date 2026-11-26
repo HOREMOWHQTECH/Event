@@ -1,128 +1,243 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
-import { Check, ChevronDown, Lock, AlertCircle, ArrowLeft } from "lucide-react";
-import { COUNTRIES, NIGERIA, NIGERIAN_STATES } from "@/config/countries";
-import { CURRENCIES, SupportedCurrency } from "@/config/currencies";
+import { Countdown } from "@/components/ui/countdown";
+import {
+  AlertCircle,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  CircleQuestionMark,
+  Lock,
+  MapPin,
+  Minus,
+  Monitor,
+  Plus,
+  Search,
+  UserCheck,
+  UserPlus,
+  UserRound,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  COUNTRIES,
+  NIGERIA,
+  NIGERIAN_STATES,
+  findCountry,
+  findNigerianState,
+} from "@/config/countries";
+import {
+  countryCurrencyBadge,
+  countryDialCode,
+  countryFlag,
+  phoneWithCountryDial,
+} from "@/config/country-meta";
+import {
+  CURRENCIES,
+  formatMoneyMinor,
+  type SupportedCurrency,
+} from "@/config/currencies";
 
-/* ---------- Design Tokens (Eyeballed & Tuned to Screenshots) ---------- */
-// Primary emerald: #0F6E56 (hover #0D5E49)
-// Page background: #F4F4F2
-// Card surface: #FFFFFF, 1px border #E5E7EB, 24px radius, ~48-50px padding
-// Chip background: #EEF4F1
-// Text: Headings #111C18, Body/Labels #6B7280 & #374151
-// Inputs & Buttons: 12px radius, 60px height
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const CURRENCY_LIST: SupportedCurrency[] = ["NGN", "USD", "EUR", "GBP"];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const INITIAL_PHONE = "+234 ";
+const MIN_NGN_PER_PASS_MINOR = 200_000;
+const LEGACY_DRAFT_KEY = "ihgc_draft_registration";
+const TOTAL_STEPS = 6;
+const HISTORY_KEY = "registrationStep";
 
-export type CurrencyConfig = {
-  symbol: string;
-  standard: number;
-  min: number;
-  quickPicks: number[];
-  format: (amount: number) => string;
+type TurnstileApi = {
+  render: (el: HTMLElement, options: Record<string, unknown>) => string;
+  reset: (target?: string | HTMLElement) => void;
+};
+const getTurnstile = () =>
+  (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+
+type FieldKey =
+  | "groupName"
+  | "seats"
+  | "inviteeCount"
+  | "genderCounts"
+  | "hasChildren"
+  | "childCount"
+  | "gender"
+  | "firstTime"
+  | "payerName"
+  | "payerPhone"
+  | "payerEmail"
+  | "country"
+  | "state"
+  | "guardianName"
+  | "guardianPhone"
+  | "customNairaAmount"
+  | "groupAttendance"
+  | "consent"
+  | "turnstile";
+type FieldErrors = Partial<Record<FieldKey, string>>;
+
+const FIELD_ORDER: FieldKey[] = [
+  "groupName",
+  "seats",
+  "country",
+  "state",
+  "inviteeCount",
+  "hasChildren",
+  "childCount",
+  "genderCounts",
+  "gender",
+  "firstTime",
+  "payerName",
+  "payerPhone",
+  "payerEmail",
+  "guardianName",
+  "guardianPhone",
+  "groupAttendance",
+  "customNairaAmount",
+  "consent",
+  "turnstile",
+];
+
+const FIELD_STEP: Record<FieldKey, number> = {
+  groupName: 2,
+  seats: 2,
+  inviteeCount: 2,
+  hasChildren: 2,
+  childCount: 2,
+  genderCounts: 2,
+  gender: 2,
+  firstTime: 2,
+  country: 3,
+  state: 3,
+  payerName: 3,
+  payerPhone: 3,
+  payerEmail: 3,
+  guardianName: 3,
+  guardianPhone: 3,
+  groupAttendance: 4,
+  customNairaAmount: 5,
+  consent: 6,
+  turnstile: 6,
 };
 
-export const CURRENCY_CONFIG: Record<SupportedCurrency, CurrencyConfig> = {
-  NGN: {
-    symbol: "₦",
-    standard: 5000,
-    min: 2000,
-    quickPicks: [5000, 10000, 20000],
-    format: (amt) => `₦${amt.toLocaleString()}`,
-  },
-  USD: {
-    symbol: "$",
-    standard: 20,
-    min: 10,
-    quickPicks: [20, 50, 100],
-    format: (amt) => `$${amt.toLocaleString()}`,
-  },
-  EUR: {
-    symbol: "€",
-    standard: 20,
-    min: 10,
-    quickPicks: [20, 50, 100],
-    format: (amt) => `€${amt.toLocaleString()}`,
-  },
-  GBP: {
-    symbol: "£",
-    standard: 20,
-    min: 10,
-    quickPicks: [20, 50, 100],
-    format: (amt) => `£${amt.toLocaleString()}`,
-  },
+const ATTENDANCE_OPTIONS = [
+  ["physically", "Physically"],
+  ["online", "Online"],
+  ["not_sure", "Not sure"],
+] as const;
+
+const ATTENDANCE_ICONS: Record<(typeof ATTENDANCE_OPTIONS)[number][0], LucideIcon> = {
+  physically: MapPin,
+  online: Monitor,
+  not_sure: CircleQuestionMark,
 };
 
-type FormState = {
-  step: number;
-  // Step 1: Category
-  category: "individual" | "group";
-  // Step 2: Role & Attendee Type
-  role: "Brother" | "Sister";
-  attendeeType: "Returning" | "First-time";
-  groupName: string;
-  seats: number;
-  // Step 3: Contact Details
-  country: string;
-  state: string;
-  fullName: string;
-  email: string;
-  whatsapp: string;
-  isMinor: boolean;
-  guardianName: string;
-  guardianPhone: string;
-  // Step 4: Ministry Details & Attendance
-  attendanceMode: "in_person" | "online" | "undecided";
-  // Step 5: Payment
-  currency: SupportedCurrency;
-  amount: number;
-  // Step 6: Review
-  consent: boolean;
-};
+function toE164Phone(phone: string): string | null {
+  let digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (/^2340\d{10}$/.test(digits)) digits = `234${digits.slice(4)}`;
+  if (/^234\d{10}$/.test(digits)) return `+${digits}`;
+  if (/^0\d{10}$/.test(digits)) return `+234${digits.slice(1)}`;
+  if (/^\d{10}$/.test(digits)) return `+234${digits}`;
+  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+  return null;
+}
 
-/* ---------- Reusable Component: <SummaryChip> ---------- */
-function SummaryChip({
-  text,
-  onEdit,
-}: {
-  text: string;
+function makeIdempotencyKey(): string {
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
+    return cryptoApi.randomUUID();
+  }
+  if (cryptoApi && typeof cryptoApi.getRandomValues === "function") {
+    const bytes = new Uint8Array(16);
+    cryptoApi.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+const normaliseSearch = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const toInt = (value: string) => Number.parseInt(value, 10) || 0;
+
+/* ---------- Small UI primitives ---------- */
+
+type CompletedItem = {
+  label: string;
+  value: string;
   onEdit: () => void;
-}) {
+};
+
+function CompletedDetails({ items }: { items: CompletedItem[] }) {
+  if (items.length === 0) return null;
+
   return (
-    <div className="flex items-center justify-between px-4 py-3.5 bg-[#EEF4F1] rounded-[12px] mb-3 last:mb-6">
-      <div className="flex items-center gap-2.5 min-w-0 pr-2">
-        <Check className="w-4 h-4 text-[#0F6E56] shrink-0 stroke-[2.5]" />
-        <span className="text-[14px] font-medium text-[#111C18] truncate">
-          {text}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[#E5E7EB] pb-3 text-[12px] leading-5 text-[#6B7280]">
+      <span className="font-semibold uppercase tracking-[0.14em] text-[#9CA3AF]">
+        Completed
+      </span>
+      {items.map((item, index) => (
+        <span key={item.label} className="inline-flex min-w-0 items-center gap-1.5">
+          {index > 0 && (
+            <span aria-hidden="true" className="mr-1.5 hidden h-3 w-px bg-[#E5E7EB] sm:block" />
+          )}
+          <Check className="h-3.5 w-3.5 shrink-0 text-[#0F6E56]" strokeWidth={2.5} aria-hidden="true" />
+          <span className="shrink-0">{item.label}:</span>
+          <span
+            className="min-w-0 max-w-[220px] truncate font-medium text-[#111C18]"
+            title={item.value}
+          >
+            {item.value}
+          </span>
+          <button
+            type="button"
+            onClick={item.onEdit}
+            className="shrink-0 font-semibold text-[#0F6E56] transition-colors hover:underline"
+            aria-label={`Edit ${item.label.toLowerCase()}`}
+          >
+            Edit
+          </button>
         </span>
-      </div>
-      <button
-        type="button"
-        onClick={onEdit}
-        className="text-[14px] font-semibold text-[#0F6E56] hover:underline shrink-0 transition-colors"
-      >
-        Edit
-      </button>
+      ))}
     </div>
   );
 }
 
-/* ---------- Reusable Component: <StepProgress> ---------- */
+function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3.5 text-[14px] sm:text-[15px]">
+      <span className="shrink-0 text-[#6B7280]">{label}</span>
+      <span className="min-w-0 break-words text-right font-bold text-[#111C18] sm:max-w-[70%]">
+        {children}
+      </span>
+    </div>
+  );
+}
+
 function StepProgress({ step }: { step: number }) {
   return (
-    <div className="w-full mb-6" aria-label={`Step ${step} of 6`}>
-      <div className="flex items-center justify-between mb-2.5">
+    <div className="mb-4 w-full" aria-label={`Step ${step} of ${TOTAL_STEPS}`}>
+      <div className="mb-2.5 flex items-center justify-between">
         <span className="text-[14px] font-semibold text-[#0F6E56]">
-          Step {step} of 6
+          Step {step} of {TOTAL_STEPS}
         </span>
         <span className="text-[14px] font-normal text-[#6B7280]">
           Registration
         </span>
       </div>
-      <div className="grid grid-cols-6 gap-2 w-full">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div className="grid w-full grid-cols-6 gap-2">
+        {Array.from({ length: TOTAL_STEPS }, (_, index) => index + 1).map((i) => (
           <div
             key={i}
             className={`h-[4px] rounded-full transition-all duration-300 ${
@@ -136,30 +251,35 @@ function StepProgress({ step }: { step: number }) {
   );
 }
 
-/* ---------- Reusable Component: <Field> ---------- */
 function Field({
   label,
   htmlFor,
   error,
+  hint,
   children,
 }: {
   label: string;
   htmlFor: string;
   error?: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2 w-full">
-      <label
-        htmlFor={htmlFor}
-        className="block text-[14px] font-medium text-[#111C18]"
-      >
+    <div className="w-full space-y-2">
+      <label htmlFor={htmlFor} className="block text-[14px] font-medium text-[#111C18]">
         {label}
       </label>
       {children}
+      {hint && !error && (
+        <p className="text-[12px] leading-relaxed text-[#6B7280]">{hint}</p>
+      )}
       {error && (
-        <p className="text-[13px] font-medium text-rose-600 flex items-center gap-1.5 mt-1">
-          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+        <p
+          id={`${htmlFor}-error`}
+          role="alert"
+          className="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-rose-600"
+        >
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span>{error}</span>
         </p>
       )}
@@ -167,7 +287,403 @@ function Field({
   );
 }
 
-/* ---------- Reusable Component: <RegistrationLayout> ---------- */
+function ChoiceButton({
+  active,
+  onClick,
+  icon: Icon,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon?: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex min-h-[38px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13px] font-medium transition-all sm:min-h-[40px] sm:px-4 sm:text-[14px] ${
+        active
+          ? "border-[#0F6E56] bg-[#0F6E56] text-white shadow-sm"
+          : "border-[#E5E7EB] bg-white text-[#111C18] hover:border-[#0F6E56]/40 hover:bg-[#F7FAF9]"
+      }`}
+    >
+      {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
+      <span className="whitespace-nowrap">{children}</span>
+    </button>
+  );
+}
+
+function ToggleRow({
+  id,
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  description?: string;
+}) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex w-full items-center justify-between gap-4 rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-4 text-left transition hover:border-[#0F6E56]/40"
+    >
+      <span className="min-w-0 text-[14px] font-medium text-[#111C18]">
+        {label}
+        {description && (
+          <small className="mt-1 block text-[12px] font-normal leading-relaxed text-[#6B7280]">
+            {description}
+          </small>
+        )}
+      </span>
+      <span
+        aria-hidden="true"
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+          checked ? "bg-[#0F6E56]" : "bg-[#D1D5DB]"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+            checked ? "translate-x-[22px]" : "translate-x-0.5"
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
+
+function NumberField({
+  id,
+  value,
+  min = 0,
+  max,
+  onChange,
+  onBlur,
+  invalid,
+  describedBy,
+  label,
+}: {
+  id: string;
+  value: string | number;
+  min?: number;
+  max?: number;
+  onChange: (next: string) => void;
+  onBlur?: () => void;
+  invalid?: boolean;
+  describedBy?: string;
+  label: string;
+}) {
+  const parsed = Number.parseInt(String(value), 10);
+  const current = Number.isFinite(parsed) ? parsed : 0;
+  const canDecrease = current > min;
+  const canIncrease = max === undefined || current < max;
+
+  return (
+    <div
+      className={`flex h-[60px] w-full items-center overflow-hidden rounded-[12px] border bg-white transition focus-within:ring-2 ${
+        invalid
+          ? "border-rose-500 focus-within:border-rose-500 focus-within:ring-rose-500/20"
+          : "border-[#D1D5DB] focus-within:border-[#0F6E56] focus-within:ring-[#0F6E56]/20"
+      }`}
+    >
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={`Decrease ${label}`}
+        disabled={!canDecrease}
+        onClick={() => onChange(String(Math.max(min, current - 1)))}
+        className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#E5E7EB] text-[#374151] transition hover:bg-[#F4F4F2] disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        value={value}
+        aria-invalid={invalid ? true : undefined}
+        aria-describedby={describedBy}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
+        className="min-w-0 flex-1 bg-transparent px-2 text-center text-[16px] font-semibold text-[#111C18] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={`Increase ${label}`}
+        disabled={!canIncrease}
+        onClick={() =>
+          onChange(String(Math.min(max ?? Number.MAX_SAFE_INTEGER, Math.max(min, current + 1))))
+        }
+        className="flex h-full w-12 shrink-0 items-center justify-center border-l border-[#E5E7EB] text-[#374151] transition hover:bg-[#F4F4F2] disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function Tally({
+  id,
+  current,
+  total,
+  unit,
+  error,
+}: {
+  id: string;
+  current: number;
+  total: number;
+  unit: string;
+  error?: string;
+}) {
+  const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+  const matched = total > 0 && current === total;
+
+  let text: string;
+  if (total <= 0) text = "Enter the number of participants first.";
+  else if (matched) text = `All ${total} ${unit} assigned`;
+  else if (current < total) text = `${total - current} of ${total} ${unit} still to assign`;
+  else text = `${current - total} over. Reduce a count so the total is ${total}.`;
+
+  return (
+    <div className="rounded-[12px] border border-[#E5E7EB] bg-[#F8FAF9] p-4">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#D1D5DB]">
+        <span
+          aria-hidden="true"
+          className={`block h-full rounded-full transition-all ${
+            error ? "bg-rose-500" : matched ? "bg-[#0F6E56]" : "bg-[#8FB8A9]"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {error ? (
+        <p id={id} role="alert" className="mt-2.5 flex items-center gap-1.5 text-[13px] font-medium text-rose-600">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span>{error}</span>
+        </p>
+      ) : (
+        <p aria-live="polite" className="mt-2.5 flex items-center gap-1.5 text-[13px] text-[#374151]">
+          {matched && <Check className="h-3.5 w-3.5 text-[#0F6E56]" />}
+          <span>{text}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Searchable country/state picker. Keeps focus while filtering and supports
+ * arrow keys + Enter, matching the behaviour of the original full form.
+ */
+function SearchableSelect({
+  id,
+  value,
+  options,
+  onChange,
+  onTyping,
+  placeholder,
+  disabled = false,
+  emptyMessage = "No matches found",
+  inputProps,
+  renderOption,
+  renderLeading,
+}: {
+  id: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  onTyping?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  emptyMessage?: string;
+  inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
+  renderOption?: (option: string) => React.ReactNode;
+  renderLeading?: (value: string) => React.ReactNode;
+}) {
+  const [query, setQuery] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  const needle = normaliseSearch(query.trim());
+  const selectedNeedle = normaliseSearch(value.trim());
+  const showAll = !needle || needle === selectedNeedle;
+
+  const filtered = useMemo(() => {
+    if (showAll) return options;
+    return options.filter((option) => normaliseSearch(option).includes(needle));
+  }, [needle, options, showAll]);
+
+  useEffect(() => setQuery(value), [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    listRef.current
+      ?.querySelector<HTMLElement>('[data-active="true"]')
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  useEffect(() => {
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, []);
+
+  const currentIndex = filtered.findIndex(
+    (option) => normaliseSearch(option) === selectedNeedle
+  );
+
+  const commit = (option: string) => {
+    onChange(option);
+    setQuery(option);
+    setOpen(false);
+    setActiveIndex(0);
+    inputRef.current?.focus();
+  };
+
+  const resetToValue = () => {
+    setQuery(value);
+    setOpen(false);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
+      } else {
+        setActiveIndex((index) => Math.min(filtered.length - 1, index + 1));
+      }
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        setActiveIndex(currentIndex >= 0 ? currentIndex : Math.max(0, filtered.length - 1));
+      } else {
+        setActiveIndex((index) => Math.max(0, index - 1));
+      }
+    } else if (event.key === "Enter" && open && filtered[activeIndex]) {
+      event.preventDefault();
+      commit(filtered[activeIndex]);
+    } else if (event.key === "Escape" && open) {
+      event.preventDefault();
+      resetToValue();
+    } else if (event.key === "Tab") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          resetToValue();
+        }
+      }}
+    >
+      <div className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[18px] text-[#6B7280]">
+        {renderLeading?.(value) ?? (disabled ? <Lock className="h-4 w-4" /> : <Search className="h-4 w-4" />)}
+      </div>
+      <input
+        {...inputProps}
+        ref={inputRef}
+        id={id}
+        type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls={`${id}-options`}
+        aria-activedescendant={open && filtered[activeIndex] ? `${id}-option-${activeIndex}` : undefined}
+        autoComplete="off"
+        value={query}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(event) => {
+          const next = event.target.value;
+          setQuery(next);
+          onTyping?.(next);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => {
+          if (disabled) return;
+          setOpen(true);
+          setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
+        }}
+        onKeyDown={handleKeyDown}
+        className={`h-[60px] w-full rounded-[12px] border bg-white pl-11 pr-10 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 disabled:cursor-not-allowed disabled:bg-[#F4F4F2] disabled:text-gray-500 ${
+          inputProps?.["aria-invalid"] ? "border-rose-500" : "border-[#D1D5DB]"
+        }`}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        disabled={disabled}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          if (disabled) return;
+          setOpen((wasOpen) => !wasOpen);
+          setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
+          inputRef.current?.focus();
+        }}
+        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-gray-500 transition hover:text-[#111C18] disabled:opacity-40"
+      >
+        <ChevronDown className="h-5 w-5" />
+      </button>
+
+      {open && !disabled && (
+        <div
+          ref={listRef}
+          id={`${id}-options`}
+          role="listbox"
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-64 overflow-auto rounded-[12px] border border-[#E5E7EB] bg-white p-1.5 shadow-xl"
+        >
+          {filtered.length === 0 ? (
+            <div className="px-4 py-3 text-[14px] text-[#6B7280]">{emptyMessage}</div>
+          ) : (
+            filtered.map((option, index) => (
+              <div
+                key={option}
+                id={`${id}-option-${index}`}
+                role="option"
+                aria-selected={option === value}
+                data-active={index === activeIndex ? "true" : undefined}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => commit(option)}
+                className={`flex cursor-pointer items-center gap-2 rounded-[8px] px-3 py-2.5 text-[14px] text-[#111C18] transition ${
+                  index === activeIndex ? "bg-[#EEF4F1]" : "hover:bg-[#F4F4F2]"
+                }`}
+              >
+                {renderOption ? renderOption(option) : option}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RegistrationLayout({
   step,
   hintBelowCard,
@@ -178,50 +694,41 @@ function RegistrationLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-[#F4F4F2]">
-      {/* 1. Main Website Navbar (kept as requested) */}
+    <div className="register-premium-bg flex min-h-screen flex-col">
       <Header />
 
-      {/* 2. Flow Header: white, ~96px tall, 1px bottom border */}
-      <div className="w-full bg-white border-b border-[#E5E7EB] h-[80px] sm:h-[96px] flex items-center px-4 sm:px-8 lg:px-12">
-        <div className="max-w-[1360px] w-full mx-auto flex items-center justify-between">
-          {/* Left: 40px green circle with white "IH", then "IHGC 2026" */}
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#0F6E56] text-white flex items-center justify-center font-bold text-sm shrink-0">
-              IH
-            </div>
-            <span className="text-[17px] sm:text-[18px] font-semibold text-[#111C18] tracking-tight">
-              IHGC 2026
-            </span>
-          </Link>
-
-          {/* Right: muted text "Begins in 14 days" + green link "View schedule" */}
-          <div className="flex items-center gap-3 sm:gap-4 text-[13px] sm:text-[14px]">
-            <span className="text-[#6B7280]">Begins in 14 days</span>
-            <Link
-              href="/programme"
-              className="font-medium text-[#0F6E56] hover:underline"
-            >
-              View schedule
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Centered Body: ~700px wide */}
-      <main className="flex-1 py-10 sm:py-14 px-4 flex flex-col items-center justify-start">
-        <div className="w-full max-w-[700px] flex flex-col items-center">
-          {/* Progress Indicator */}
+      <main className="flex flex-1 flex-col items-center justify-start px-4 pb-10 pt-4 sm:pb-14 sm:pt-6">
+        <div className="flex w-full max-w-[700px] flex-col items-center">
           <StepProgress step={step} />
-
-          {/* White Card: 24px radius, 1px border, ~50px padding */}
-          <div className="w-full bg-white border border-[#E5E7EB] rounded-[24px] p-6 sm:p-12 shadow-sm">
-            {children}
+          <div className="register-premium-card w-full rounded-[24px] bg-white">
+            <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-t-[24px] border-b border-[#EEF2F0] bg-white/80 px-3 py-3 sm:gap-3 sm:px-12 sm:py-4">
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
+                <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.06em] text-[#0F6E56] sm:text-[13px] sm:tracking-[0.12em]">
+                  IHGC 2026
+                </span>
+                <span aria-hidden className="hidden h-3 w-px bg-[#D1D5DB] sm:block" />
+                <div className="flex min-w-0 items-center gap-1 text-[12px] font-medium text-[#6B7280] sm:gap-2 sm:text-[13px]">
+                  <span className="whitespace-nowrap sm:hidden">In</span>
+                  <span className="hidden whitespace-nowrap sm:inline">Begins in</span>
+                  <span className="min-w-0 [&>div]:gap-1 sm:[&>div]:gap-1.5">
+                    <Countdown compact onLight />
+                  </span>
+                </div>
+              </div>
+              <Link
+                href="/programme"
+                aria-label="View schedule"
+                title="View schedule"
+                className="inline-flex shrink-0 items-center whitespace-nowrap text-[13px] font-semibold text-[#0F6E56] hover:underline"
+              >
+                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+                <span className="hidden sm:ml-1.5 sm:inline">View schedule</span>
+              </Link>
+            </div>
+            <div className="p-6 sm:p-12">{children}</div>
           </div>
-
-          {/* Hint Below Card */}
           {hintBelowCard && (
-            <div className="mt-6 text-[13px] sm:text-[14px] text-[#6B7280] text-center">
+            <div className="mt-6 text-center text-[13px] text-[#6B7280] sm:text-[14px]">
               {hintBelowCard}
             </div>
           )}
@@ -234,1070 +741,1648 @@ function RegistrationLayout({
 }
 
 /* =========================================================================
- * Main Component: RegisterPage (6-Step Registration Flow)
+ * Main component: functional registration flow in the step-by-step UI.
  * ========================================================================= */
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState<FormState>({
-    step: 1, // Starts at Step 1 as requested
-    category: "individual",
-    role: "Brother",
-    attendeeType: "Returning",
-    groupName: "",
-    seats: 1,
-    country: "Nigeria",
-    state: "Akwa Ibom",
-    fullName: "",
-    email: "",
-    whatsapp: "",
-    isMinor: false,
-    guardianName: "",
-    guardianPhone: "",
-    attendanceMode: "in_person",
-    currency: "NGN",
-    amount: 5000,
-    consent: false,
+  const router = useRouter();
+
+  const [step, setStep] = useState(1);
+  const [isGroup, setIsGroup] = useState(false);
+  const [currency, setCurrency] = useState<SupportedCurrency>("NGN");
+  const [pricesMinor, setPricesMinor] = useState<Partial<Record<SupportedCurrency, number>>>({});
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [configState, setConfigState] = useState<"loading" | "ready" | "error">("loading");
+
+  const [payerName, setPayerName] = useState("");
+  const [payerPhone, setPayerPhone] = useState(INITIAL_PHONE);
+  const [payerEmail, setPayerEmail] = useState("");
+  const [country, setCountry] = useState("Nigeria");
+  const [state, setState] = useState("");
+  const [groupName, setGroupName] = useState("");
+  const [seatsInput, setSeatsInput] = useState("0");
+  const parsedSeats = Number.parseInt(seatsInput, 10);
+  const seatsCount = Number.isFinite(parsedSeats) ? Math.min(500, Math.max(0, parsedSeats)) : 0;
+  const [attendanceMode, setAttendanceMode] = useState<"physically" | "online" | "not_sure">("physically");
+  const [gender, setGender] = useState<"male" | "female">("male");
+  const [firstTime, setFirstTime] = useState<"yes" | "no">("no");
+  const [hasInvitees, setHasInvitees] = useState(false);
+  const [inviteeCount, setInviteeCount] = useState("0");
+  const [genderCounts, setGenderCounts] = useState({ male: 0, female: 0 });
+  const [hasChildren, setHasChildren] = useState(false);
+  const [childCount, setChildCount] = useState(0);
+  const [isMinor, setIsMinor] = useState(false);
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [customNairaAmount, setCustomNairaAmount] = useState("5000");
+  const [groupAttendance, setGroupAttendance] = useState({ physically: 0, online: 0, not_sure: 0 });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const checkoutAttempt = useRef<{ payload: string; key: string } | null>(null);
+
+  const errorCount = Object.keys(fieldErrors).length;
+  const matchedCountry = findCountry(country);
+  const matchedState = findNigerianState(state);
+  const isNigeria = matchedCountry === NIGERIA || country.trim().toLowerCase() === "nigeria";
+  const selectedCountry = findCountry(country) ?? country;
+  const selectedDial = countryDialCode(selectedCountry);
+  const selectedFlag = countryFlag(selectedCountry);
+  const inviteeNumber = hasInvitees ? Number(inviteeCount) || 0 : 0;
+  const returningCount = Math.max(0, seatsCount - inviteeNumber);
+  const groupAttendanceTotal =
+    groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
+
+  const [stateOptions, setStateOptions] = useState<readonly string[]>(NIGERIAN_STATES);
+  const [statesLoading, setStatesLoading] = useState(false);
+  const stateCache = useRef<Record<string, readonly string[]>>({ [NIGERIA]: NIGERIAN_STATES });
+
+  // First-time attendees coming from outside Nigeria must tell us where they
+  // are coming from. Groups count as first-time when they have invitees.
+  const isFirstTimeAttendee = isGroup ? inviteeNumber > 0 : firstTime === "yes";
+  const requiresForeignState = !isNigeria && isFirstTimeAttendee;
+
+  // Country/state belong to the group-details step for groups, but to the
+  // contact step for individuals, matching the original working form.
+  const fieldStep = (key: FieldKey): number =>
+    key === "country" || key === "state" ? (isGroup ? 2 : 3) : FIELD_STEP[key];
+
+  const writeStepToHistory = useCallback((next: number, replace = false) => {
+    if (typeof window === "undefined") return;
+    const state = { ...(window.history.state || {}), [HISTORY_KEY]: next };
+    if (replace) window.history.replaceState(state, "");
+    else window.history.pushState(state, "");
+  }, []);
+
+  const goToStep = useCallback(
+    (target: number, replace = false) => {
+      const next = Math.min(TOTAL_STEPS, Math.max(1, target));
+      setStep(next);
+      writeStepToHistory(next, replace);
+    },
+    [writeStepToHistory]
+  );
+
+  /* ---------- Reset helpers ---------- */
+
+  const resetTurnstile = useCallback(() => {
+    const api = getTurnstile();
+    if (turnstileRef.current && api) {
+      try {
+        api.reset(turnstileRef.current);
+      } catch (_) {}
+    }
+    setTurnstileToken(null);
+  }, []);
+
+  const resetForm = useCallback(() => {
+    goToStep(1, true);
+    setIsGroup(false);
+    setCurrency("NGN");
+    setPayerName("");
+    setPayerPhone(INITIAL_PHONE);
+    setPayerEmail("");
+    setCountry("Nigeria");
+    setState("");
+    setGroupName("");
+    setSeatsInput("0");
+    setAttendanceMode("physically");
+    setGender("male");
+    setFirstTime("no");
+    setHasInvitees(false);
+    setInviteeCount("0");
+    setGenderCounts({ male: 0, female: 0 });
+    setHasChildren(false);
+    setChildCount(0);
+    setIsMinor(false);
+    setGuardianName("");
+    setGuardianPhone("");
+    setConsent(false);
+    setCustomNairaAmount("5000");
+    setGroupAttendance({ physically: 0, online: 0, not_sure: 0 });
+    setError(null);
+    setFieldErrors({});
+    setLoading(false);
+    checkoutAttempt.current = null;
+    resetTurnstile();
+  }, [resetTurnstile, goToStep]);
+
+  const switchMode = (group: boolean) => {
+    if (group === isGroup) return;
+    resetForm();
+    setIsGroup(group);
+  };
+
+  const clearErr = (key: FieldKey) =>
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+  const blurValidate = (key: FieldKey) => {
+    const message = validate()[key];
+    setFieldErrors((prev) => {
+      if (message) return prev[key] === message ? prev : { ...prev, [key]: message };
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const fp = (key: FieldKey, validateOnBlur = true) => ({
+    "aria-invalid": fieldErrors[key] ? true : undefined,
+    "aria-describedby": fieldErrors[key] ? `field-${key}-error` : undefined,
+    ...(validateOnBlur ? { onBlur: () => blurValidate(key) } : {}),
   });
 
-  const [customAmountText, setCustomAmountText] = useState("5,000");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const nf = (key: FieldKey) => ({
+    invalid: Boolean(fieldErrors[key]),
+    describedBy: fieldErrors[key] ? `field-${key}-error` : undefined,
+  });
 
-  const currencyMeta = CURRENCY_CONFIG[formData.currency] || CURRENCY_CONFIG.NGN;
-  const isNigeria = formData.country.toLowerCase() === "nigeria";
+  const focusField = (key: FieldKey) => {
+    window.setTimeout(() => {
+      const el = document.getElementById(`field-${key}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (key !== "turnstile") el.focus({ preventScroll: true });
+    }, 60);
+  };
 
-  // Keep amount synced with quick pick or custom text
-  const handleAmountInputChange = (raw: string) => {
-    // Strip non-digits
-    const cleanDigits = raw.replace(/\D/g, "");
-    const numeric = cleanDigits ? parseInt(cleanDigits, 10) : 0;
-    setCustomAmountText(numeric > 0 ? numeric.toLocaleString() : "");
-    setFormData((prev) => ({ ...prev, amount: numeric }));
-    if (fieldErrors.amount) {
-      setFieldErrors((prev) => {
-        const next = { ...prev };
-        delete next.amount;
-        return next;
+  /* ---------- Effects ---------- */
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem(LEGACY_DRAFT_KEY);
+    } catch (_) {}
+  }, []);
+
+  // Keep the wizard in the browser history so the device/Android back button
+  // moves to the previous step instead of leaving the registration flow.
+  useEffect(() => {
+    writeStepToHistory(1, true);
+
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+
+    const onPopState = (event: PopStateEvent) => {
+      const state = event.state as Record<string, unknown> | null;
+      const next = state?.[HISTORY_KEY];
+      setStep(typeof next === "number" ? Math.min(TOTAL_STEPS, Math.max(1, next)) : 1);
+      setError(null);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, [writeStepToHistory]);
+
+  // Always open a new step from the top of the form, including hardware back.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [step]);
+
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) resetForm();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [resetForm]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/api/register`, { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Config unavailable");
+        if (cancelled) return;
+        setPricesMinor(data.pricesMinor || {});
+        setRegistrationOpen(Boolean(data.registrationOpen));
+        setConfigState("ready");
+      })
+      .catch((caught) => {
+        if (cancelled) return;
+        console.error(caught);
+        setConfigState("error");
       });
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const handleQuickPick = (pick: number) => {
-    setCustomAmountText(pick.toLocaleString());
-    setFormData((prev) => ({ ...prev, amount: pick }));
-    if (fieldErrors.amount) {
-      setFieldErrors((prev) => {
-        const next = { ...prev };
-        delete next.amount;
-        return next;
+  // Load states/regions for the selected country. Nigeria is local; every
+  // other country comes from the open CountriesNow dataset.
+  useEffect(() => {
+    const selected = findCountry(country) ?? country;
+    if (!selected || selected === NIGERIA) {
+      setStateOptions(NIGERIAN_STATES);
+      setStatesLoading(false);
+      return;
+    }
+
+    const cached = stateCache.current[selected];
+    if (cached) {
+      setStateOptions(cached);
+      setStatesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setStatesLoading(true);
+    fetch("https://countriesnow.space/api/v0.1/countries/states", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country: selected }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (cancelled) return;
+        const names = Array.isArray(data?.data?.states)
+          ? data.data.states
+              .map((entry: { name?: string }) => String(entry?.name || "").trim())
+              .filter(Boolean)
+              .sort((a: string, b: string) => a.localeCompare(b))
+          : [];
+        stateCache.current[selected] = names;
+        setStateOptions(names);
+      })
+      .catch(() => {
+        if (!cancelled) setStateOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setStatesLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [country]);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || step !== TOTAL_STEPS) return;
+    let cancelled = false;
+
+    const renderWidget = () => {
+      const api = getTurnstile();
+      if (!cancelled && api && turnstileRef.current && !turnstileRef.current.hasChildNodes()) {
+        api.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (token: string) => {
+            setTurnstileToken(token);
+            clearErr("turnstile");
+          },
+          "expired-callback": () => setTurnstileToken(null),
+          "error-callback": () => setTurnstileToken(null),
+          theme: "light",
+        });
+      }
+    };
+
+    if (getTurnstile()) {
+      renderWidget();
+      return () => {
+        cancelled = true;
+      };
     }
+
+    let script = document.getElementById("ihgc-turnstile-script") as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = "ihgc-turnstile-script";
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.defer = true;
+      script.onload = renderWidget;
+      document.head.appendChild(script);
+    } else {
+      script.onload = renderWidget;
+      renderWidget();
+    }
+
+    return () => {
+      cancelled = true;
+      script!.onload = null;
+    };
+  }, [step]);
+
+  /* ---------- Pricing ---------- */
+
+  const effectiveSeats = isGroup ? seatsCount : 1;
+  const unitMinor = pricesMinor[currency];
+  const minimumNairaMinor = effectiveSeats * MIN_NGN_PER_PASS_MINOR;
+  const standardGroupNairaMinor =
+    typeof pricesMinor.NGN === "number" ? pricesMinor.NGN * seatsCount : null;
+  const customNairaMajor = Number(customNairaAmount);
+  const customNairaMinor =
+    currency === "NGN" && Number.isFinite(customNairaMajor)
+      ? Math.round(customNairaMajor * 100)
+      : null;
+  const totalMinor =
+    currency === "NGN"
+      ? isGroup
+        ? standardGroupNairaMinor
+        : customNairaMinor
+      : typeof unitMinor === "number"
+        ? effectiveSeats * unitMinor
+        : null;
+  const formattedTotal = totalMinor !== null ? formatMoneyMinor(totalMinor, currency) : "—";
+
+  /* ---------- Validation (same rules as the original full form) ---------- */
+
+  const validate = (): FieldErrors => {
+    const errs: FieldErrors = {};
+    const seatsValid = Number.isInteger(parsedSeats) && parsedSeats >= 2 && parsedSeats <= 500;
+
+    if (isGroup) {
+      if (!groupName.trim()) errs.groupName = "Enter your chapter or zone name.";
+      if (!seatsValid) errs.seats = "Enter a number between 2 and 500.";
+      if (
+        hasInvitees &&
+        (!Number.isInteger(Number(inviteeCount)) ||
+          Number(inviteeCount) < 1 ||
+          Number(inviteeCount) > seatsCount)
+      ) {
+        errs.inviteeCount = `Enter a number between 1 and ${seatsCount}.`;
+      }
+      if (genderCounts.male + genderCounts.female !== seatsCount) {
+        errs.genderCounts = `Brothers and Sisters must add up to ${seatsCount} participants (children included).`;
+      }
+      if (hasChildren && (childCount < 1 || childCount > seatsCount)) {
+        errs.childCount = `Enter a child count between 1 and ${seatsCount}.`;
+      }
+    } else {
+      if (gender !== "male" && gender !== "female") errs.gender = "Select Brother or Sister.";
+      if (firstTime !== "yes" && firstTime !== "no") errs.firstTime = "Select Yes or No.";
+    }
+
+    if (!payerName.trim()) errs.payerName = "Enter your full name.";
+    if (!toE164Phone(payerPhone)) {
+      errs.payerPhone = `Enter a valid phone number with country code, e.g. ${selectedDial} 801 234 5678.`;
+    }
+    if (!EMAIL_RE.test(payerEmail.trim())) {
+      errs.payerEmail = "Enter a valid email address, e.g. name@example.com.";
+    }
+    if (!matchedCountry) errs.country = "Select a country from the list.";
+    if (isNigeria && !matchedState) {
+      errs.state = "Select a state from the list.";
+    } else if (requiresForeignState && !state.trim()) {
+      errs.state = "Select the state or region you are coming from.";
+    }
+
+    if (!isGroup && isMinor) {
+      if (!guardianName.trim()) errs.guardianName = "Enter a parent or guardian name.";
+      if (!guardianPhone.trim()) errs.guardianPhone = "Enter a parent or guardian phone number.";
+    }
+
+    if (!isGroup && currency === "NGN") {
+      if (
+        !Number.isInteger(customNairaMajor) ||
+        customNairaMinor === null ||
+        customNairaMinor < minimumNairaMinor
+      ) {
+        errs.customNairaAmount = "Enter a valid whole-naira amount.";
+      }
+    }
+
+    if (isGroup && seatsValid) {
+      const counted = groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
+      if (counted !== parsedSeats) {
+        errs.groupAttendance = `The three counts must add up to ${parsedSeats} participants (currently ${counted}).`;
+      }
+    }
+
+    if (!consent) errs.consent = "Please accept the terms and consent to continue.";
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      errs.turnstile = "Please complete the verification check.";
+    }
+
+    return errs;
   };
 
-  const handleCurrencyChange = (curr: SupportedCurrency) => {
-    const meta = CURRENCY_CONFIG[curr];
-    setFormData((prev) => ({
-      ...prev,
-      currency: curr,
-      amount: meta.standard,
-    }));
-    setCustomAmountText(meta.standard.toLocaleString());
+  const stepKeys = (current: number): FieldKey[] => {
+    if (current === 2) {
+      return isGroup
+        ? [
+            "groupName",
+            "seats",
+            "country",
+            "state",
+            "inviteeCount",
+            "hasChildren",
+            "childCount",
+            "genderCounts",
+          ]
+        : ["gender", "firstTime"];
+    }
+    if (current === 3) {
+      return [
+        ...(!isGroup ? (["country", "state"] as FieldKey[]) : []),
+        "payerName",
+        "payerPhone",
+        "payerEmail",
+        ...(!isGroup && isMinor ? (["guardianName", "guardianPhone"] as FieldKey[]) : []),
+      ];
+    }
+    if (current === 4) return isGroup ? ["groupAttendance"] : [];
+    if (current === 5) return ["customNairaAmount"];
+    if (current === TOTAL_STEPS) return ["consent", "turnstile"];
+    return [];
   };
 
-  // Strip leading 0 from WhatsApp when country is Nigeria
-  const handleWhatsAppChange = (val: string) => {
-    let clean = val.replace(/[^\d\s-]/g, "");
-    if (isNigeria && clean.startsWith("0")) {
-      clean = clean.replace(/^0+/, "");
-    }
-    setFormData((prev) => ({ ...prev, whatsapp: clean }));
-    if (fieldErrors.whatsapp) {
-      setFieldErrors((prev) => {
-        const next = { ...prev };
-        delete next.whatsapp;
-        return next;
+  const validateStep = (current: number): boolean => {
+    const all = validate();
+    const keys = stepKeys(current);
+    const nextErrors: FieldErrors = {};
+    keys.forEach((key) => {
+      if (all[key]) nextErrors[key] = all[key];
+    });
+
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      keys.forEach((key) => {
+        if (nextErrors[key]) next[key] = nextErrors[key];
+        else delete next[key];
       });
+      return next;
+    });
+
+    if (keys.some((key) => nextErrors[key])) return false;
+    if (current === 5 && totalMinor === null) {
+      setError("Pricing is still loading. Please wait a moment and try again.");
+      return false;
     }
-  };
-
-  // Validation per step
-  const validateStep = (currentStep: number): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (currentStep === 1) {
-      if (!formData.category) errors.category = "Please select a category.";
-    } else if (currentStep === 2) {
-      if (formData.category === "group") {
-        if (!formData.groupName.trim())
-          errors.groupName = "Enter your group or chapter name.";
-        if (formData.seats < 2)
-          errors.seats = "Group must have at least 2 participants.";
-      }
-    } else if (currentStep === 3) {
-      if (!formData.country.trim()) errors.country = "Select your country.";
-      if (!formData.state.trim()) errors.state = "Provide your state or region.";
-      if (!formData.fullName.trim()) errors.fullName = "Enter your full name.";
-      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!formData.email.trim() || !EMAIL_RE.test(formData.email.trim())) {
-        errors.email = "Enter a valid email address (e.g. name@example.com).";
-      }
-      if (!formData.whatsapp.trim() || formData.whatsapp.replace(/\D/g, "").length < 7) {
-        errors.whatsapp = "Enter a valid WhatsApp phone number.";
-      }
-      if (formData.isMinor) {
-        if (!formData.guardianName.trim()) {
-          errors.guardianName = "Enter parent or guardian full name.";
-        }
-        if (!formData.guardianPhone.trim() || formData.guardianPhone.replace(/\D/g, "").length < 7) {
-          errors.guardianPhone = "Enter a valid parent or guardian phone number.";
-        }
-      }
-    } else if (currentStep === 4) {
-      if (!formData.attendanceMode)
-        errors.attendanceMode = "Please select your attendance mode.";
-    } else if (currentStep === 5) {
-      if (formData.amount < currencyMeta.min) {
-        errors.amount = `Minimum registration amount is ${currencyMeta.format(
-          currencyMeta.min
-        )}.`;
-      }
-    } else if (currentStep === 6) {
-      if (!formData.consent) {
-        errors.consent = "You must confirm and accept the terms to proceed.";
-      }
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    setError(null);
+    return true;
   };
 
   const nextStep = () => {
-    if (validateStep(formData.step)) {
-      setFormData((prev) => ({
-        ...prev,
-        step: Math.min(6, prev.step + 1),
-      }));
-    }
+    if (!validateStep(step)) return;
+    goToStep(step + 1);
   };
 
   const prevStep = () => {
-    setFormData((prev) => ({
-      ...prev,
-      step: Math.max(1, prev.step - 1),
-    }));
+    setError(null);
+    if (step > 1) {
+      window.history.back();
+      return;
+    }
+    goToStep(1, true);
   };
 
-  const jumpToStep = (targetStep: number) => {
-    setFormData((prev) => ({ ...prev, step: targetStep }));
+  const jumpToStep = (target: number) => {
+    setError(null);
+    goToStep(target);
   };
 
-  // Stub function as explicitly requested: "Step 6's 'Pay' should call a stub function initPaystack(payload) that I'll wire up later. Don't implement the Paystack integration yet."
-  const initPaystack = (payload: unknown) => {
-    console.log("Paystack init stub called with payload:", payload);
-    alert(
-      `Paystack stub called: Ready to pay ${currencyMeta.format(
-        formData.amount
-      )}. (Stub ready for live wiring)`
-    );
+  /* ---------- Submit ---------- */
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (loading) return;
+    setError(null);
+
+    const errs = validate();
+    setFieldErrors(errs);
+    const firstInvalid = FIELD_ORDER.find((key) => errs[key]);
+    if (firstInvalid) {
+      goToStep(fieldStep(firstInvalid));
+      focusField(firstInvalid);
+      return;
+    }
+
+    const payerPhoneE164 = toE164Phone(payerPhone);
+    if (!payerPhoneE164) return;
+
+    setLoading(true);
+
+    try {
+      const minor = !isGroup && isMinor;
+
+      const checkoutPayload = {
+        currency,
+        isGroup,
+        payer: {
+          name: payerName.trim(),
+          phoneE164: payerPhoneE164,
+          phone: payerPhone.trim(),
+          email: payerEmail.trim().toLowerCase(),
+        },
+        country: matchedCountry || country.trim(),
+        state: state.trim() || undefined,
+        attendanceMode,
+        gender: isGroup ? undefined : gender,
+        firstTime: isGroup ? undefined : firstTime === "yes",
+        isMinor: minor,
+        guardianName: minor ? guardianName.trim() : undefined,
+        guardianPhone: minor ? guardianPhone.trim() : undefined,
+        group: isGroup ? { name: groupName.trim(), totalSeats: seatsCount } : undefined,
+        inviteeCount: isGroup && hasInvitees ? Number(inviteeCount) : isGroup ? 0 : undefined,
+        genderCounts: isGroup ? genderCounts : undefined,
+        hasChildren: isGroup ? hasChildren : undefined,
+        childCount: isGroup && hasChildren ? childCount : undefined,
+        turnstileToken: turnstileToken || undefined,
+        consent,
+        customAmountMinor: !isGroup && currency === "NGN" ? customNairaMinor : undefined,
+        groupAttendance: isGroup ? groupAttendance : undefined,
+      };
+
+      const { turnstileToken: _token, ...fingerprintSource } = checkoutPayload;
+      const fingerprint = JSON.stringify(fingerprintSource);
+      if (!checkoutAttempt.current || checkoutAttempt.current.payload !== fingerprint) {
+        checkoutAttempt.current = { payload: fingerprint, key: makeIdempotencyKey() };
+      }
+
+      const response = await fetch(`${API_BASE}/api/checkout/initialize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": checkoutAttempt.current.key,
+        },
+        body: JSON.stringify(checkoutPayload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 410) checkoutAttempt.current = null;
+        throw new Error(data.error || "Failed to initialize registration session.");
+      }
+
+      checkoutAttempt.current = null;
+
+      if (data.reference && data.checkoutToken) {
+        try {
+          localStorage.setItem(`ihgc_checkout_${data.reference}`, data.checkoutToken);
+          localStorage.setItem(
+            "ihgc_last_checkout",
+            JSON.stringify({ reference: data.reference, phone: payerPhoneE164 })
+          );
+        } catch (_) {}
+      }
+
+      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+      else router.push(`/payment/status?ref=${data.reference}`);
+    } catch (caught) {
+      setError(
+        caught instanceof Error && caught.message
+          ? caught.message
+          : "An unexpected error occurred. Please try again."
+      );
+      setLoading(false);
+      resetTurnstile();
+    }
   };
 
-  /* -----------------------------------------------------------------------
-   * STEP 1: Registration Category (Scaffolded Placeholder)
-   * ----------------------------------------------------------------------- */
-  if (formData.step === 1) {
-    return (
-      <RegistrationLayout
-        step={1}
-        hintBelowCard="Next: About you & role"
+  const submitDisabled =
+    loading ||
+    configState !== "ready" ||
+    !registrationOpen ||
+    totalMinor === null ||
+    (isGroup && (!Number.isInteger(parsedSeats) || parsedSeats < 2 || parsedSeats > 500));
+
+  const handleCountryChange = (next: string) => {
+    setCountry(next);
+    setPayerPhone((prev) => phoneWithCountryDial(prev, countryDialCode(next)));
+    clearErr("country");
+    clearErr("state");
+    clearErr("payerPhone");
+    setState("");
+  };
+
+  const locationFields = (
+    <>
+      <Field
+        htmlFor="field-country"
+        label={isGroup ? "Group country" : "Country of residence"}
+        error={fieldErrors.country}
+        hint={isGroup ? "Applied to every participant in this group." : undefined}
       >
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-[30px] sm:text-[34px] font-bold text-[#111C18] tracking-tight">
-              Registration category
-            </h1>
-            <p className="text-[15px] sm:text-[16px] text-[#6B7280] mt-1.5">
-              Select how you will be attending IHGC 2026.
-            </p>
-          </div>
-
-          <div className="space-y-3.5 pt-2">
-            {[
-              {
-                id: "individual",
-                title: "Individual pass",
-                desc: "Registering for myself as a single attendee.",
-              },
-              {
-                id: "group",
-                title: "Group delegation",
-                desc: "Registering multiple participants for a church branch or zone.",
-              },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    category: cat.id as "individual" | "group",
-                  }))
-                }
-                className={`w-full text-left p-5 rounded-[12px] border transition-all ${
-                  formData.category === cat.id
-                    ? "border-[#0F6E56] bg-[#EEF4F1]/60 ring-2 ring-[#0F6E56]/15"
-                    : "border-[#D1D5DB] hover:border-gray-400 bg-white"
-                }`}
-              >
-                <div className="font-semibold text-[16px] text-[#111C18]">
-                  {cat.title}
-                </div>
-                <div className="text-[13px] text-[#6B7280] mt-0.5">
-                  {cat.desc}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between pt-6 border-t border-[#E5E7EB]">
-            <Link
-              href="/"
-              className="text-[14px] font-semibold text-[#111C18] hover:text-black py-3 px-1"
-            >
-              Back to Home
-            </Link>
-            <button
-              type="button"
-              onClick={nextStep}
-              className="h-[60px] px-8 rounded-[12px] bg-[#0F6E56] text-white font-bold text-[16px] hover:bg-[#0D5E49] transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      </RegistrationLayout>
-    );
-  }
-
-  /* -----------------------------------------------------------------------
-   * STEP 2: About You / Role (Scaffolded Placeholder)
-   * ----------------------------------------------------------------------- */
-  if (formData.step === 2) {
-    return (
-      <RegistrationLayout
-        step={2}
-        hintBelowCard="Next: Your contact details"
-      >
-        <div className="space-y-6">
-          <SummaryChip
-            text={
-              formData.category === "group"
-                ? "Group delegation"
-                : "Individual pass"
-            }
-            onEdit={() => jumpToStep(1)}
-          />
-
-          <div>
-            <h1 className="text-[30px] sm:text-[34px] font-bold text-[#111C18] tracking-tight">
-              About you
-            </h1>
-            <p className="text-[15px] sm:text-[16px] text-[#6B7280] mt-1.5">
-              Specify your title and attendance background.
-            </p>
-          </div>
-
-          {formData.category === "individual" ? (
-            <div className="space-y-6 pt-2">
-              <Field label="Title / Gender" htmlFor="role-select">
-                <div className="grid grid-cols-2 gap-3">
-                  {(["Brother", "Sister"] as const).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, role: r }))}
-                      className={`h-[60px] rounded-[12px] font-semibold text-[15px] border transition-all ${
-                        formData.role === r
-                          ? "bg-[#0F6E56] text-white border-[#0F6E56]"
-                          : "bg-white border-[#D1D5DB] text-[#111C18] hover:border-gray-400"
-                      }`}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-
-              <Field label="Attendance history" htmlFor="history-select">
-                <div className="grid grid-cols-2 gap-3">
-                  {(["Returning", "First-time"] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, attendeeType: t }))
-                      }
-                      className={`h-[60px] rounded-[12px] font-semibold text-[15px] border transition-all ${
-                        formData.attendeeType === t
-                          ? "bg-[#0F6E56] text-white border-[#0F6E56]"
-                          : "bg-white border-[#D1D5DB] text-[#111C18] hover:border-gray-400"
-                      }`}
-                    >
-                      {t} attendee
-                    </button>
-                  ))}
-                </div>
-              </Field>
-            </div>
-          ) : (
-            <div className="space-y-6 pt-2">
-              <Field
-                label="Chapter / Branch name"
-                htmlFor="group-name"
-                error={fieldErrors.groupName}
-              >
-                <input
-                  id="group-name"
-                  type="text"
-                  placeholder="e.g. Horemow Lagos Central"
-                  value={formData.groupName}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      groupName: e.target.value,
-                    }))
-                  }
-                  className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
-                />
-              </Field>
-
-              <Field
-                label="Number of participants"
-                htmlFor="seats-count"
-                error={fieldErrors.seats}
-              >
-                <input
-                  id="seats-count"
-                  type="number"
-                  min={2}
-                  max={500}
-                  value={formData.seats || ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      seats: parseInt(e.target.value, 10) || 0,
-                    }))
-                  }
-                  className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
-                />
-              </Field>
-            </div>
+        <SearchableSelect
+          id="field-country"
+          value={country}
+          options={COUNTRIES}
+          placeholder="Search countries..."
+          emptyMessage="No countries match your search"
+          inputProps={fp("country", false)}
+          onTyping={() => {
+            clearErr("country");
+            clearErr("state");
+          }}
+          onChange={handleCountryChange}
+          renderLeading={() => <span aria-hidden>{countryFlag(country)}</span>}
+          renderOption={(option) => (
+            <>
+              <span aria-hidden className="text-[18px] leading-none">
+                {countryFlag(option)}
+              </span>
+              <span className="min-w-0 truncate">{option}</span>
+              <span aria-hidden className="ml-auto opacity-60">
+                {countryCurrencyBadge(option)}
+              </span>
+            </>
           )}
+        />
+      </Field>
 
-          <div className="flex items-center justify-between pt-6 border-t border-[#E5E7EB]">
-            <button
-              type="button"
-              onClick={prevStep}
-              className="text-[14px] font-semibold text-[#111C18] hover:text-black py-3 px-1"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={nextStep}
-              className="h-[60px] px-8 rounded-[12px] bg-[#0F6E56] text-white font-bold text-[16px] hover:bg-[#0D5E49] transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      </RegistrationLayout>
-    );
-  }
-
-  /* -----------------------------------------------------------------------
-   * STEP 3: "Your contact details" (PIXEL-FAITHFUL TO form (1).jpeg)
-   * ----------------------------------------------------------------------- */
-  if (formData.step === 3) {
-    const summaryText =
-      formData.category === "group"
-        ? `Group delegation · ${formData.groupName || "Branch"} · ${formData.seats} attendees`
-        : `Individual pass · ${formData.role} · ${formData.attendeeType} attendee`;
-
-    return (
-      <RegistrationLayout
-        step={3}
-        hintBelowCard="Next: Ministry details"
+      <Field
+        htmlFor="field-state"
+        label={
+          isNigeria
+            ? isGroup
+              ? "Group state"
+              : "State of residence"
+            : requiresForeignState
+              ? "State / region you're coming from"
+              : "State / region (optional)"
+        }
+        error={fieldErrors.state}
+        hint={
+          statesLoading
+            ? "Loading states and regions..."
+            : isNigeria
+              ? undefined
+              : requiresForeignState
+                ? "Required because you're a first-time attendee."
+                : "Optional for returning attendees. Type your state or region if it is not listed."
+        }
       >
-        <div className="space-y-6">
-          {/* Summary Chip */}
-          <SummaryChip text={summaryText} onEdit={() => jumpToStep(2)} />
+        <SearchableSelect
+          id="field-state"
+          value={state}
+          options={stateOptions}
+          placeholder={
+            statesLoading
+              ? "Loading states and regions..."
+              : isNigeria
+                ? "Search Nigerian states..."
+                : `Search states in ${selectedCountry || "your country"}...`
+          }
+          emptyMessage="No matches — type your state or region"
+          inputProps={fp("state", false)}
+          onTyping={() => clearErr("state")}
+          onChange={(next) => {
+            setState(next);
+            clearErr("state");
+          }}
+          renderLeading={() => <Search className="h-4 w-4" />}
+        />
+      </Field>
+    </>
+  );
 
-          {/* Heading & Subtitle */}
-          <div>
-            <h1 className="text-[30px] sm:text-[34px] font-bold text-[#111C18] tracking-tight">
-              Your contact details
-            </h1>
-            <p className="text-[15px] sm:text-[16px] text-[#6B7280] mt-1.5">
-              Your digital pass and check-in barcode will be sent here.
-            </p>
-          </div>
+  const phoneValid = Boolean(toE164Phone(payerPhone));
+  const emailValid = EMAIL_RE.test(payerEmail.trim());
+  const nairaChips: { label: string; minor: number }[] =
+    typeof pricesMinor.NGN === "number" && pricesMinor.NGN !== minimumNairaMinor
+      ? [{ label: "Standard", minor: pricesMinor.NGN }]
+      : [];
 
-          <div className="space-y-6 pt-2">
-            {/* Field: Country of residence */}
-            <Field
-              label="Country of residence"
-              htmlFor="field-country"
-              error={fieldErrors.country}
-            >
-              <div className="relative">
-                <select
-                  id="field-country"
-                  value={formData.country}
-                  onChange={(e) => {
-                    const nextCountry = e.target.value;
-                    const nextIsNigeria = nextCountry.toLowerCase() === "nigeria";
-                    setFormData((prev) => ({
-                      ...prev,
-                      country: nextCountry,
-                      state: nextIsNigeria ? "Akwa Ibom" : "",
-                    }));
-                  }}
-                  className="w-full h-[60px] px-4 pr-10 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white appearance-none focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all cursor-pointer"
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-5 h-5 text-gray-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </Field>
+  const categorySummary = isGroup
+    ? `Group participants · ${groupName.trim() || "Chapter"} · ${seatsCount} participants`
+    : `Individual participant · ${gender === "male" ? "Brother" : "Sister"} · ${
+        firstTime === "yes" ? "First-time" : "Returning"
+      } attendee`;
+  const attendeeSummary = isGroup
+    ? `${groupName.trim() || "Chapter"} · ${seatsCount} participants`
+    : `${gender === "male" ? "Brother" : "Sister"} · ${
+        firstTime === "yes" ? "First-time" : "Returning"
+      }`;
+  const contactSummary = payerName.trim()
+    ? `${payerName.trim()} · ${payerEmail.trim() || selectedDial}`
+    : "";
+  const attendanceSummary = isGroup
+    ? `Group attendance · ${groupAttendanceTotal}/${seatsCount} assigned`
+    : attendanceMode === "physically"
+      ? "Physically · Kwali Campground"
+      : attendanceMode === "online"
+        ? "Online · Livestream"
+        : "Not sure yet";
 
-            {/* Field: State of residence (Option select for Nigeria, text for others) */}
-            <Field
-              label="State of residence"
-              htmlFor="field-state"
-              error={fieldErrors.state}
-            >
-              {isNigeria ? (
-                <div className="relative">
-                  <select
-                    id="field-state"
-                    value={formData.state}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, state: e.target.value }))
-                    }
-                    className="w-full h-[60px] px-4 pr-10 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white appearance-none focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all cursor-pointer"
-                  >
-                    <option value="">Select a Nigerian state</option>
-                    {NIGERIAN_STATES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-5 h-5 text-gray-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              ) : (
-                <input
-                  id="field-state"
-                  type="text"
-                  placeholder="e.g. California, Ontario, London"
-                  value={formData.state}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, state: e.target.value }))
-                  }
-                  className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
-                />
-              )}
-            </Field>
+  const attendeeHistory: CompletedItem = {
+    label: isGroup ? "Group" : "Attendee",
+    value: attendeeSummary,
+    onEdit: () => jumpToStep(2),
+  };
+  const contactHistory: CompletedItem | null = payerName.trim()
+    ? {
+        label: "Contact",
+        value: contactSummary,
+        onEdit: () => jumpToStep(3),
+      }
+    : null;
+  const attendanceHistory: CompletedItem = {
+    label: "Attendance",
+    value: attendanceSummary,
+    onEdit: () => jumpToStep(4),
+  };
 
-            {/* Field: Full name */}
-            <Field
-              label="Full name"
-              htmlFor="field-name"
-              error={fieldErrors.fullName}
-            >
-              <input
-                id="field-name"
-                type="text"
-                placeholder="e.g. Bro. John Doe"
-                value={formData.fullName}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, fullName: e.target.value }))
-                }
-                className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white placeholder:text-gray-400 focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
-              />
-            </Field>
-
-            {/* Field: Email address */}
-            <Field
-              label="Email address"
-              htmlFor="field-email"
-              error={fieldErrors.email}
-            >
-              <input
-                id="field-email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="name@example.com"
-                value={formData.email}
-                onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, email: e.target.value }));
-                  if (fieldErrors.email) {
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.email;
-                      return next;
-                    });
-                  }
-                }}
-                className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white placeholder:text-gray-400 focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
-              />
-            </Field>
-
-            {/* Field: WhatsApp number with gray left addon */}
-            <Field
-              label="WhatsApp number"
-              htmlFor="field-whatsapp"
-              error={fieldErrors.whatsapp}
-            >
-              <div className="flex h-[60px] w-full rounded-[12px] border border-[#D1D5DB] overflow-hidden focus-within:border-[#0F6E56] focus-within:ring-2 focus-within:ring-[#0F6E56]/20 transition-all">
-                <div className="w-[80px] bg-[#F4F4F2] border-r border-[#D1D5DB] flex items-center justify-center text-[15px] sm:text-[16px] font-medium text-[#111C18] shrink-0 select-none">
-                  {isNigeria ? "+234" : "+"}
-                </div>
-                <input
-                  id="field-whatsapp"
-                  type="tel"
-                  placeholder="801 234 5678"
-                  value={formData.whatsapp}
-                  onChange={(e) => handleWhatsAppChange(e.target.value)}
-                  className="flex-1 px-4 h-full text-[16px] text-[#111C18] placeholder:text-gray-400 bg-white focus:outline-none"
-                />
-              </div>
-            </Field>
-
-            {/* Field: Age confirmation (Above 18 vs Below 18) */}
-            <Field label="Age confirmation" htmlFor="age-select">
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, isMinor: false }))}
-                  className={`h-[60px] rounded-[12px] font-semibold text-[15px] border transition-all ${
-                    !formData.isMinor
-                      ? "bg-[#0F6E56] text-white border-[#0F6E56] shadow-sm"
-                      : "bg-white border-[#D1D5DB] text-[#111C18] hover:border-gray-400"
-                  }`}
-                >
-                  18 years or older
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, isMinor: true }))}
-                  className={`h-[60px] rounded-[12px] font-semibold text-[15px] border transition-all ${
-                    formData.isMinor
-                      ? "bg-[#0F6E56] text-white border-[#0F6E56] shadow-sm"
-                      : "bg-white border-[#D1D5DB] text-[#111C18] hover:border-gray-400"
-                  }`}
-                >
-                  Under 18 years
-                </button>
-              </div>
-            </Field>
-
-            {/* Parent / Guardian details if under 18 */}
-            {formData.isMinor && (
-              <div className="space-y-6 p-5 sm:p-6 rounded-[16px] bg-[#EEF4F1]/70 border border-[#D1E5DE]">
-                <div className="text-[14px] font-bold text-[#0F6E56]">
-                  Parent / Guardian Information (Required for under 18)
-                </div>
-                <Field
-                  label="Parent / Guardian name"
-                  htmlFor="field-guardian-name"
-                  error={fieldErrors.guardianName}
-                >
-                  <input
-                    id="field-guardian-name"
-                    type="text"
-                    placeholder="Parent or Guardian Full Name"
-                    value={formData.guardianName}
-                    onChange={(e) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        guardianName: e.target.value,
-                      }));
-                      if (fieldErrors.guardianName) {
-                        setFieldErrors((prev) => {
-                          const next = { ...prev };
-                          delete next.guardianName;
-                          return next;
-                        });
-                      }
-                    }}
-                    className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white placeholder:text-gray-400 focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
-                  />
-                </Field>
-
-                <Field
-                  label="Parent / Guardian phone number"
-                  htmlFor="field-guardian-phone"
-                  error={fieldErrors.guardianPhone}
-                >
-                  <input
-                    id="field-guardian-phone"
-                    type="tel"
-                    placeholder="Parent or Guardian Phone Number"
-                    value={formData.guardianPhone}
-                    onChange={(e) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        guardianPhone: e.target.value,
-                      }));
-                      if (fieldErrors.guardianPhone) {
-                        setFieldErrors((prev) => {
-                          const next = { ...prev };
-                          delete next.guardianPhone;
-                          return next;
-                        });
-                      }
-                    }}
-                    className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white placeholder:text-gray-400 focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
-                  />
-                </Field>
-              </div>
-            )}
-          </div>
-
-          {/* Footer row: Back on left, green Continue button on right */}
-          <div className="flex items-center justify-between pt-6 border-t border-[#E5E7EB]">
-            <button
-              type="button"
-              onClick={prevStep}
-              className="text-[14px] font-semibold text-[#111C18] hover:text-black py-3 px-1 transition-colors"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={nextStep}
-              className="h-[60px] px-8 rounded-[12px] bg-[#0F6E56] text-white font-bold text-[16px] hover:bg-[#0D5E49] transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      </RegistrationLayout>
-    );
-  }
-
-  /* -----------------------------------------------------------------------
-   * STEP 4: "Ministry details & Attendance" (Scaffolded Placeholder)
-   * ----------------------------------------------------------------------- */
-  if (formData.step === 4) {
-    return (
-      <RegistrationLayout
-        step={4}
-        hintBelowCard="Next: Payment"
+  const footerButtons = (back = true, nextLabel = "Continue") => (
+    <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-5">
+      {back ? (
+        <button
+          type="button"
+          onClick={prevStep}
+          className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] transition hover:text-black"
+        >
+          Back
+        </button>
+      ) : (
+        <Link href="/" className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] hover:text-black">
+          Back to Home
+        </Link>
+      )}
+      <button
+        type="button"
+        onClick={nextStep}
+        className="h-[44px] rounded-[10px] bg-[#0F6E56] px-5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0D5E49]"
       >
-        <div className="space-y-6">
-          <SummaryChip
-            text={`Individual pass · ${formData.role} · ${formData.attendeeType}`}
-            onEdit={() => jumpToStep(2)}
-          />
+        {nextLabel}
+      </button>
+    </div>
+  );
 
-          <div>
-            <h1 className="text-[30px] sm:text-[34px] font-bold text-[#111C18] tracking-tight">
-              Ministry details
-            </h1>
-            <p className="text-[15px] sm:text-[16px] text-[#6B7280] mt-1.5">
-              Select your attendance mode and camp accommodation.
-            </p>
+  return (
+    <RegistrationLayout
+      step={step}
+      hintBelowCard={
+        step === TOTAL_STEPS ? (
+          <div className="flex items-center justify-center gap-1.5 text-[12px] text-[#6B7280] sm:text-[13px]">
+            <Lock className="h-3.5 w-3.5" />
+            <span>Secure checkout · Registration fees are non-refundable</span>
           </div>
-
-          <div className="space-y-6 pt-2">
-            <Field
-              label="Attendance mode"
-              htmlFor="attendance-mode"
-              error={fieldErrors.attendanceMode}
-            >
-              <div className="space-y-3">
-                {[
-                  {
-                    id: "in_person",
-                    label: "Attending in person",
-                    sub: "Holiness Campground, Kwali, Abuja",
-                  },
-                  {
-                    id: "online",
-                    label: "Attending online",
-                    sub: "Live streaming worldwide",
-                  },
-                ].map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        attendanceMode: m.id as "in_person" | "online",
-                      }))
-                    }
-                    className={`w-full text-left p-5 rounded-[12px] border transition-all ${
-                      formData.attendanceMode === m.id
-                        ? "border-[#0F6E56] bg-[#EEF4F1]/60 ring-2 ring-[#0F6E56]/15"
-                        : "border-[#D1D5DB] hover:border-gray-400 bg-white"
-                    }`}
-                  >
-                    <div className="font-semibold text-[16px] text-[#111C18]">
-                      {m.label}
-                    </div>
-                    <div className="text-[13px] text-[#6B7280] mt-0.5">
-                      {m.sub}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </Field>
-          </div>
-
-          <div className="flex items-center justify-between pt-6 border-t border-[#E5E7EB]">
-            <button
-              type="button"
-              onClick={prevStep}
-              className="text-[14px] font-semibold text-[#111C18] hover:text-black py-3 px-1"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={nextStep}
-              className="h-[60px] px-8 rounded-[12px] bg-[#0F6E56] text-white font-bold text-[16px] hover:bg-[#0D5E49] transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      </RegistrationLayout>
-    );
-  }
-
-  /* -----------------------------------------------------------------------
-   * STEP 5: "Payment" (PIXEL-FAITHFUL TO form (3).jpeg)
-   * ----------------------------------------------------------------------- */
-  if (formData.step === 5) {
-    const attendanceLabel =
-      formData.attendanceMode === "in_person"
-        ? "Attending in person"
-        : "Attending online";
-
-    return (
-      <RegistrationLayout
-        step={5}
-        hintBelowCard="Next: Review and pay"
-      >
-        <div className="space-y-6">
-          {/* Two Stacked Summary Chips */}
-          <div>
-            <SummaryChip
-              text={`Individual pass · ${formData.role} · ${formData.attendeeType}`}
-              onEdit={() => jumpToStep(2)}
-            />
-            <SummaryChip
-              text={attendanceLabel}
-              onEdit={() => jumpToStep(4)}
-            />
-          </div>
-
-          {/* Heading & Subtitle */}
-          <div>
-            <h1 className="text-[30px] sm:text-[34px] font-bold text-[#111C18] tracking-tight">
-              Payment
-            </h1>
-            <p className="text-[15px] sm:text-[16px] text-[#6B7280] mt-1.5">
-              Choose your currency and registration amount.
-            </p>
-          </div>
-
-          <div className="space-y-6 pt-2">
-            {/* Label: Currency */}
-            <div className="space-y-2">
-              <label className="block text-[14px] font-medium text-[#111C18]">
-                Currency
-              </label>
-              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                {(["NGN", "USD", "EUR", "GBP"] as SupportedCurrency[]).map((c) => {
-                  const isSelected = formData.currency === c;
-                  const meta = CURRENCIES[c];
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => handleCurrencyChange(c)}
-                      className={`h-[50px] px-3.5 sm:px-4 rounded-[12px] font-semibold text-[15px] transition-all flex items-center justify-center gap-1.5 ${
-                        isSelected
-                          ? "bg-[#0F6E56] text-white font-bold shadow-sm"
-                          : "bg-white border border-[#D1D5DB] text-[#374151] hover:border-gray-400"
-                      }`}
-                    >
-                      <span className="text-[17px] leading-none select-none" aria-hidden>
-                        {meta?.flag}
-                      </span>
-                      <span>{c}</span>
-                    </button>
-                  );
-                })}
-              </div>
+        ) : undefined
+      }
+    >
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
+        {/* Step 1: category */}
+        {step === 1 && (
+          <>
+            <div>
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+                Registration category
+              </h1>
+              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
+                Select how you will be attending IHGC 2026.
+              </p>
             </div>
 
-            {/* Label: Registration amount */}
-            <Field
-              label="Registration amount"
-              htmlFor="field-amount"
-              error={fieldErrors.amount}
-            >
-              <div className="flex h-[60px] w-full rounded-[12px] border border-[#D1D5DB] overflow-hidden focus-within:border-[#0F6E56] focus-within:ring-2 focus-within:ring-[#0F6E56]/20 transition-all">
-                <div className="w-[50px] bg-[#F4F4F2] border-r border-[#D1D5DB] flex items-center justify-center text-[18px] font-bold text-[#111C18] shrink-0 select-none">
-                  {currencyMeta.symbol}
-                </div>
-                <input
-                  id="field-amount"
-                  type="text"
-                  inputMode="numeric"
-                  value={customAmountText}
-                  onChange={(e) => handleAmountInputChange(e.target.value)}
-                  className="flex-1 px-4 h-full text-[18px] sm:text-[20px] font-bold text-[#111C18] bg-white focus:outline-none"
-                />
-              </div>
-              <p className="text-[12px] sm:text-[13px] text-[#6B7280] mt-1.5">
-                Standard fee is {currencyMeta.format(currencyMeta.standard)}. Minimum is{" "}
-                {currencyMeta.format(currencyMeta.min)}.
-              </p>
-            </Field>
-
-            {/* Quick-pick chips */}
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              {currencyMeta.quickPicks.map((pick) => {
-                const isSelected = formData.amount === pick;
+            <div className="grid gap-3.5 pt-2 sm:grid-cols-2">
+              {[
+                {
+                  group: false,
+                  title: "Individual participant",
+                  desc: "Register yourself as an individual participant.",
+                  icon: UserRound,
+                },
+                {
+                  group: true,
+                  title: "Group participants",
+                  desc: "Register your chapter, unit, zone and others as a group.",
+                  icon: UsersRound,
+                },
+              ].map((option) => {
+                const Icon = option.icon;
                 return (
                   <button
-                    key={pick}
+                    key={option.title}
                     type="button"
-                    onClick={() => handleQuickPick(pick)}
-                    className={`h-[46px] px-5 rounded-[12px] text-[14px] font-bold transition-all ${
-                      isSelected
-                        ? "bg-[#0F6E56] text-white shadow-sm"
-                        : "bg-white border border-[#D1D5DB] text-[#374151] hover:border-gray-400"
+                    onClick={() => switchMode(option.group)}
+                    className={`rounded-[12px] border p-5 text-left transition-all ${
+                      isGroup === option.group
+                        ? "border-[#0F6E56] bg-[#EEF4F1]/60 ring-2 ring-[#0F6E56]/15"
+                        : "border-[#D1D5DB] bg-white hover:border-gray-400"
                     }`}
                   >
-                    {currencyMeta.format(pick)}
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-[18px] w-[18px] shrink-0 text-[#0F6E56]" aria-hidden="true" />
+                      <div className="text-[16px] font-semibold text-[#111C18]">{option.title}</div>
+                    </div>
+                    <div className="mt-1 text-[13px] text-[#6B7280]">{option.desc}</div>
                   </button>
                 );
               })}
             </div>
-          </div>
 
-          {/* Footer row */}
-          <div className="flex items-center justify-between pt-6 border-t border-[#E5E7EB]">
-            <button
-              type="button"
-              onClick={prevStep}
-              className="text-[14px] font-semibold text-[#111C18] hover:text-black py-3 px-1 transition-colors"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={nextStep}
-              className="h-[60px] px-8 rounded-[12px] bg-[#0F6E56] text-white font-bold text-[16px] hover:bg-[#0D5E49] transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      </RegistrationLayout>
-    );
-  }
+            {footerButtons(false)}
+          </>
+        )}
 
-  /* -----------------------------------------------------------------------
-   * STEP 6: "Review and confirm" (PIXEL-FAITHFUL TO form (2).jpeg)
-   * ----------------------------------------------------------------------- */
-  return (
-    <RegistrationLayout
-      step={6}
-      hintBelowCard={
-        <div className="flex items-center justify-center gap-1.5 text-[12px] sm:text-[13px] text-[#6B7280]">
-          <Lock className="w-3.5 h-3.5 text-[#6B7280]" />
-          <span>256-bit SSL encrypted checkout · Paystack certified</span>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        {/* Title & Subtitle (No summary chips on this step as per screenshot) */}
-        <div>
-          <h1 className="text-[30px] sm:text-[34px] font-bold text-[#111C18] tracking-tight">
-            Review and confirm
-          </h1>
-          <p className="text-[15px] sm:text-[16px] text-[#6B7280] mt-1.5">
-            Check your details before the secure Paystack checkout.
-          </p>
-        </div>
-
-        {/* Key/Value Rows with 1px dividers */}
-        <div className="divide-y divide-[#E5E7EB] pt-2">
-          <div className="py-3.5 flex items-center justify-between text-[15px]">
-            <span className="text-[#6B7280]">Category</span>
-            <span className="font-bold text-[#111C18]">
-              {formData.category === "group"
-                ? "Group delegation"
-                : "Individual pass"}
-            </span>
-          </div>
-
-          <div className="py-3.5 flex items-center justify-between text-[15px]">
-            <span className="text-[#6B7280]">Participants</span>
-            <span className="font-bold text-[#111C18]">
-              {formData.category === "group"
-                ? `${formData.seats} attendees`
-                : "1 attendee"}
-            </span>
-          </div>
-
-          <div className="py-3.5 flex items-center justify-between text-[15px]">
-            <span className="text-[#6B7280]">Attendance</span>
-            <span className="font-bold text-[#111C18]">
-              {formData.attendanceMode === "in_person"
-                ? "In person, Kwali Camp"
-                : "Online live stream"}
-            </span>
-          </div>
-
-          <div className="py-3.5 flex items-center justify-between text-[15px]">
-            <span className="text-[#6B7280]">Location</span>
-            <span className="font-bold text-[#111C18]">
-              {formData.country}
-              {formData.state ? `, ${formData.state}` : ""}
-            </span>
-          </div>
-
-          {formData.email && (
-            <div className="py-3.5 flex items-center justify-between text-[15px]">
-              <span className="text-[#6B7280]">Email</span>
-              <span className="font-bold text-[#111C18] truncate max-w-[260px] sm:max-w-[340px]">
-                {formData.email}
-              </span>
+        {/* Step 2: attendee / group details */}
+        {step === 2 && (
+          <>
+            <div>
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+                {isGroup ? "Group details" : "About you"}
+              </h1>
+              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
+                {isGroup
+                  ? "Tell us about your chapter or zone and the people attending."
+                  : "Tell us your gender and whether you’re attending as an invitee or a first-timer."}
+              </p>
             </div>
-          )}
 
-          {formData.isMinor && formData.guardianName && (
-            <div className="py-3.5 flex items-center justify-between text-[15px]">
-              <span className="text-[#6B7280]">Guardian</span>
-              <span className="font-bold text-[#111C18] truncate max-w-[260px] sm:max-w-[340px]">
-                {formData.guardianName}
-                {formData.guardianPhone ? ` (${formData.guardianPhone})` : ""}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Total Payable Row */}
-        <div className="pt-4 pb-2 flex items-baseline justify-between border-t border-[#E5E7EB]">
-          <div>
-            <div className="text-[17px] sm:text-[18px] font-bold text-[#111C18]">
-              Total payable
-            </div>
-            <div className="text-[12px] sm:text-[13px] text-[#6B7280] mt-0.5">
-              Includes all event materials and pass
-            </div>
-          </div>
-          <div className="text-[34px] sm:text-[40px] font-extrabold text-[#111C18] tracking-tight">
-            {currencyMeta.format(formData.amount)}
-          </div>
-        </div>
-
-        {/* Checkbox Row: ONE normal inline paragraph with underlined green links */}
-        <div className="pt-2">
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={formData.consent}
-              onChange={(e) => {
-                setFormData((prev) => ({ ...prev, consent: e.target.checked }));
-                if (fieldErrors.consent) {
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.consent;
-                    return next;
-                  });
-                }
-              }}
-              className="w-5 h-5 mt-0.5 rounded border-gray-300 text-[#0F6E56] focus:ring-[#0F6E56] accent-[#0F6E56]"
+            <CompletedDetails
+              items={[
+                {
+                  label: "Category",
+                  value: categorySummary,
+                  onEdit: () => jumpToStep(1),
+                },
+              ]}
             />
-            <span className="text-[13px] sm:text-[14px] text-[#6B7280] leading-relaxed">
-              I confirm my information is correct. I understand fees are
-              non-refundable and accept the{" "}
-              <Link
-                href="/privacy"
-                className="text-[#0F6E56] underline font-medium hover:text-[#0D5E49]"
-              >
-                Privacy Policy
-              </Link>{" "}
-              and{" "}
-              <Link
-                href="/terms"
-                className="text-[#0F6E56] underline font-medium hover:text-[#0D5E49]"
-              >
-                Terms of Service
-              </Link>
-              .
-            </span>
-          </label>
-          {fieldErrors.consent && (
-            <p className="text-[13px] font-medium text-rose-600 flex items-center gap-1.5 mt-2 pl-8">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>{fieldErrors.consent}</span>
-            </p>
-          )}
-        </div>
 
-        {/* Footer row: Back on left, Pay button on right */}
-        <div className="flex items-center justify-between pt-6 border-t border-[#E5E7EB]">
-          <button
-            type="button"
-            onClick={prevStep}
-            className="text-[14px] font-semibold text-[#111C18] hover:text-black py-3 px-1 transition-colors"
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            disabled={!formData.consent}
-            onClick={() => {
-              if (validateStep(6)) {
-                initPaystack({
-                  category: formData.category,
-                  role: formData.role,
-                  attendeeType: formData.attendeeType,
-                  fullName: formData.fullName,
-                  email: formData.email,
-                  whatsapp: formData.whatsapp,
-                  isMinor: formData.isMinor,
-                  guardianName: formData.guardianName,
-                  guardianPhone: formData.guardianPhone,
-                  country: formData.country,
-                  state: formData.state,
-                  attendanceMode: formData.attendanceMode,
-                  currency: formData.currency,
-                  amount: formData.amount,
-                });
-              }
-            }}
-            className="h-[60px] px-8 rounded-[12px] bg-[#0F6E56] text-white font-bold text-[16px] hover:bg-[#0D5E49] disabled:opacity-50 disabled:pointer-events-none transition-all shadow-sm"
-          >
-            Pay {currencyMeta.format(formData.amount)} with Paystack
-          </button>
-        </div>
-      </div>
+            {isGroup ? (
+              <div className="space-y-5 pt-2">
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field htmlFor="field-groupName" label="Chapter / zone name" error={fieldErrors.groupName}>
+                    <input
+                      id="field-groupName"
+                      type="text"
+                      placeholder="e.g. Horemow Lagos Central"
+                      value={groupName}
+                      onChange={(event) => {
+                        setGroupName(event.target.value);
+                        clearErr("groupName");
+                      }}
+                      {...fp("groupName")}
+                      className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                    />
+                  </Field>
+
+                  <Field
+                    htmlFor="field-seats"
+                    label="Number of participants"
+                    error={fieldErrors.seats}
+                    hint="Everyone attending, children included."
+                  >
+                    <NumberField
+                      {...nf("seats")}
+                      id="field-seats"
+                      label="participants"
+                      value={seatsInput}
+                      min={2}
+                      max={500}
+                      onChange={(next) => {
+                        setSeatsInput(next);
+                        clearErr("seats");
+                        clearErr("groupAttendance");
+                        clearErr("genderCounts");
+                        if (!hasInvitees) clearErr("inviteeCount");
+                      }}
+                      onBlur={() => {
+                        const parsed = Number.parseInt(seatsInput, 10);
+                        const clamped = Math.min(500, Math.max(0, Number.isFinite(parsed) ? parsed : 0));
+                        setSeatsInput(String(clamped));
+                        if (clamped >= 2) clearErr("seats");
+                        else
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            seats: "Enter a number between 2 and 500.",
+                          }));
+                      }}
+                    />
+                  </Field>
+
+                  {locationFields}
+                </div>
+
+                <div className="space-y-3">
+                  <ToggleRow
+                    id="field-hasInvitees"
+                    checked={hasInvitees}
+                    onChange={(next) => {
+                      setHasInvitees(next);
+                      setInviteeCount(next ? "1" : "0");
+                      clearErr("inviteeCount");
+                    }}
+                    label="Do you have new comers / invitees registering with you?"
+                    description={
+                      hasInvitees
+                        ? `${inviteeNumber} first-time · ${returningCount} returning attendant${
+                            returningCount === 1 ? "" : "s"
+                          }`
+                        : `All ${seatsCount} participants will be recorded as returning attendants.`
+                    }
+                  />
+                  {hasInvitees && (
+                    <Field
+                      htmlFor="field-inviteeCount"
+                      label="Number of new comers / invitees"
+                      error={fieldErrors.inviteeCount}
+                      hint="These participants are recorded as first-time attendees."
+                    >
+                      <NumberField
+                        {...nf("inviteeCount")}
+                        id="field-inviteeCount"
+                        label="invitees"
+                        value={inviteeCount}
+                        min={1}
+                        max={seatsCount}
+                        onChange={(next) => {
+                          setInviteeCount(next);
+                          clearErr("inviteeCount");
+                        }}
+                      />
+                    </Field>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <ToggleRow
+                    id="field-hasChildren"
+                    checked={hasChildren}
+                    onChange={(next) => {
+                      setHasChildren(next);
+                      setChildCount(next ? 1 : 0);
+                      clearErr("hasChildren");
+                      clearErr("childCount");
+                    }}
+                    label="Are you registering any children?"
+                    description="Children are included in the participant count."
+                  />
+                  {hasChildren && (
+                    <Field
+                      htmlFor="field-childCount"
+                      label="Number of children"
+                      error={fieldErrors.childCount}
+                    >
+                      <NumberField
+                        {...nf("childCount")}
+                        id="field-childCount"
+                        label="children"
+                        value={childCount}
+                        min={1}
+                        max={seatsCount}
+                        onChange={(next) => {
+                          setChildCount(Math.max(0, Math.min(seatsCount, toInt(next))));
+                          clearErr("childCount");
+                        }}
+                      />
+                    </Field>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <Field htmlFor="field-genderCounts" label="Number of males" hint="Include boys in this count.">
+                      <NumberField
+                        id="field-genderCounts"
+                        label="males"
+                        value={genderCounts.male}
+                        min={0}
+                        max={seatsCount}
+                        invalid={Boolean(fieldErrors.genderCounts)}
+                        describedBy={fieldErrors.genderCounts ? "field-genderCounts-error" : undefined}
+                        onChange={(next) => {
+                          const value = Math.max(0, Math.min(seatsCount, toInt(next)));
+                          setGenderCounts((prev) => ({ ...prev, male: value }));
+                          clearErr("genderCounts");
+                        }}
+                      />
+                    </Field>
+                    <Field
+                      htmlFor="field-genderCounts-female"
+                      label="Number of females"
+                      hint="Include girls in this count."
+                    >
+                      <NumberField
+                        id="field-genderCounts-female"
+                        label="females"
+                        value={genderCounts.female}
+                        min={0}
+                        max={seatsCount}
+                        invalid={Boolean(fieldErrors.genderCounts)}
+                        describedBy={fieldErrors.genderCounts ? "field-genderCounts-error" : undefined}
+                        onChange={(next) => {
+                          const value = Math.max(0, Math.min(seatsCount, toInt(next)));
+                          setGenderCounts((prev) => ({ ...prev, female: value }));
+                          clearErr("genderCounts");
+                        }}
+                      />
+                    </Field>
+                  </div>
+                  <Tally
+                    id="field-genderCounts-error"
+                    current={genderCounts.male + genderCounts.female}
+                    total={seatsCount}
+                    unit="participants"
+                    error={fieldErrors.genderCounts}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-6 pt-2 sm:grid-cols-2">
+                <Field htmlFor="field-gender" label="Title / Gender" error={fieldErrors.gender}>
+                  <div id="field-gender" role="group" aria-label="Gender" className="flex flex-wrap gap-2">
+                    {(["male", "female"] as const).map((value) => (
+                      <ChoiceButton
+                        key={value}
+                        active={gender === value}
+                        onClick={() => {
+                          setGender(value);
+                          clearErr("gender");
+                        }}
+                      >
+                        {value === "male" ? "Brother" : "Sister"}
+                      </ChoiceButton>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field htmlFor="field-firstTime" label="Attendance history" error={fieldErrors.firstTime}>
+                  <div id="field-firstTime" role="group" aria-label="First timer or invitee" className="flex flex-wrap gap-2">
+                    {(["no", "yes"] as const).map((value) => (
+                      <ChoiceButton
+                        key={value}
+                        active={firstTime === value}
+                        onClick={() => {
+                          setFirstTime(value);
+                          clearErr("firstTime");
+                        }}
+                        icon={value === "yes" ? UserPlus : UserCheck}
+                      >
+                        {value === "yes" ? "First-time" : "Returning"}
+                      </ChoiceButton>
+                    ))}
+                  </div>
+                </Field>
+              </div>
+            )}
+
+            {footerButtons()}
+          </>
+        )}
+
+        {/* Step 3: contact */}
+        {step === 3 && (
+          <>
+            <div>
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+                {isGroup ? "Group leader details" : "Your contact details"}
+              </h1>
+              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
+                {isGroup
+                  ? "The person registering and paying for the group."
+                  : "Your digital pass and check-in barcode will be sent here."}
+              </p>
+            </div>
+
+            <CompletedDetails items={[attendeeHistory]} />
+
+            <div className="grid gap-5 pt-2 sm:grid-cols-2">
+              {!isGroup && locationFields}
+
+              <div className="sm:col-span-2">
+                <Field htmlFor="field-payerName" label="Full name" error={fieldErrors.payerName}>
+                  <div className="relative">
+                    <input
+                      id="field-payerName"
+                      type="text"
+                      autoComplete="name"
+                      placeholder="Brother / Sister Full Name"
+                      value={payerName}
+                      onChange={(event) => {
+                        setPayerName(event.target.value);
+                        clearErr("payerName");
+                      }}
+                      {...fp("payerName")}
+                      className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                    />
+                    {payerName.trim() && !fieldErrors.payerName && (
+                      <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                    )}
+                  </div>
+                </Field>
+              </div>
+
+              <Field
+                htmlFor="field-payerPhone"
+                label="Phone number"
+                error={fieldErrors.payerPhone}
+                hint={`${selectedFlag} ${selectedDial} for ${selectedCountry || "your selected country"}`}
+              >
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[18px]" aria-hidden>
+                    {selectedFlag}
+                  </span>
+                  <input
+                    id="field-payerPhone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder={`${selectedDial} 801 234 5678`}
+                    value={payerPhone}
+                    onChange={(event) => {
+                      setPayerPhone(event.target.value);
+                      clearErr("payerPhone");
+                    }}
+                    {...fp("payerPhone")}
+                    className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] pl-12 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                  />
+                  {phoneValid && !fieldErrors.payerPhone && (
+                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                  )}
+                </div>
+              </Field>
+
+              <Field htmlFor="field-payerEmail" label="Email address" error={fieldErrors.payerEmail}>
+                <div className="relative">
+                  <input
+                    id="field-payerEmail"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    placeholder="name@example.com"
+                    value={payerEmail}
+                    onChange={(event) => {
+                      setPayerEmail(event.target.value);
+                      clearErr("payerEmail");
+                    }}
+                    {...fp("payerEmail")}
+                    className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                  />
+                  {emailValid && !fieldErrors.payerEmail && (
+                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                  )}
+                </div>
+              </Field>
+            </div>
+
+            {!isGroup && (
+              <div className="space-y-4">
+                <ToggleRow
+                  id="field-isMinor"
+                  checked={isMinor}
+                  onChange={(next) => {
+                    setIsMinor(next);
+                    clearErr("guardianName");
+                    clearErr("guardianPhone");
+                  }}
+                  label="Participant is under 18 years of age"
+                  description="A parent or guardian's details are needed."
+                />
+                {isMinor && (
+                  <div className="grid gap-5 rounded-[12px] border border-[#D1E5DE] bg-[#EEF4F1]/70 p-5 sm:grid-cols-2">
+                    <Field htmlFor="field-guardianName" label="Parent / guardian name" error={fieldErrors.guardianName}>
+                      <input
+                        id="field-guardianName"
+                        type="text"
+                        placeholder="Parent / Guardian Name"
+                        value={guardianName}
+                        onChange={(event) => {
+                          setGuardianName(event.target.value);
+                          clearErr("guardianName");
+                        }}
+                        {...fp("guardianName")}
+                        className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] bg-white px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                      />
+                    </Field>
+                    <Field htmlFor="field-guardianPhone" label="Parent / guardian phone" error={fieldErrors.guardianPhone}>
+                      <input
+                        id="field-guardianPhone"
+                        type="tel"
+                        placeholder="Parent / Guardian Phone"
+                        value={guardianPhone}
+                        onChange={(event) => {
+                          setGuardianPhone(event.target.value);
+                          clearErr("guardianPhone");
+                        }}
+                        {...fp("guardianPhone")}
+                        className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] bg-white px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                      />
+                    </Field>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {footerButtons()}
+          </>
+        )}
+
+        {/* Step 4: attendance */}
+        {step === 4 && (
+          <>
+            <div>
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+                {isGroup ? "How will the group attend?" : "How will you attend?"}
+              </h1>
+              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
+                {isGroup
+                  ? seatsCount > 0
+                    ? `Enter a count for each mode. The counts must add up to all ${seatsCount} participants.`
+                    : "Set the number of participants in step 2 first."
+                  : "Select your attendance mode."}
+              </p>
+            </div>
+
+            <CompletedDetails
+              items={contactHistory ? [attendeeHistory, contactHistory] : [attendeeHistory]}
+            />
+
+            {isGroup ? (
+              <div className="space-y-4 pt-2">
+                <div className="grid gap-5 sm:grid-cols-3">
+                  {ATTENDANCE_OPTIONS.map(([key, label]) => {
+                    const id = `field-attendance-${key}`;
+                    return (
+                      <Field key={key} htmlFor={id} label={label}>
+                        <NumberField
+                          id={id}
+                          label={label.toLowerCase()}
+                          value={groupAttendance[key]}
+                          min={0}
+                          max={seatsCount}
+                          invalid={Boolean(fieldErrors.groupAttendance)}
+                          describedBy={fieldErrors.groupAttendance ? "field-groupAttendance-error" : undefined}
+                          onChange={(next) => {
+                            setGroupAttendance({
+                              ...groupAttendance,
+                              [key]: Math.max(0, Math.min(seatsCount, toInt(next))),
+                            });
+                            clearErr("groupAttendance");
+                          }}
+                        />
+                      </Field>
+                    );
+                  })}
+                </div>
+                <Tally
+                  id="field-groupAttendance-error"
+                  current={groupAttendanceTotal}
+                  total={seatsCount}
+                  unit="participants"
+                  error={fieldErrors.groupAttendance}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {ATTENDANCE_OPTIONS.map(([value, label]) => (
+                  <ChoiceButton
+                    key={value}
+                    active={attendanceMode === value}
+                    onClick={() => setAttendanceMode(value)}
+                    icon={ATTENDANCE_ICONS[value]}
+                  >
+                    {label}
+                  </ChoiceButton>
+                ))}
+              </div>
+            )}
+
+            {footerButtons()}
+          </>
+        )}
+
+        {/* Step 5: payment */}
+        {step === 5 && (
+          <>
+            <div>
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">Payment</h1>
+              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
+                Choose the currency you want to pay in. Standard prices are per participant.
+              </p>
+            </div>
+
+            <CompletedDetails
+              items={[
+                attendeeHistory,
+                ...(contactHistory ? [contactHistory] : []),
+                attendanceHistory,
+              ]}
+            />
+
+            <div className="space-y-6 pt-2">
+              <div className="space-y-2">
+                <label className="block text-[14px] font-medium text-[#111C18]">Currency</label>
+                <div className="flex flex-wrap gap-2.5 sm:gap-3">
+                  {CURRENCY_LIST.map((code) => {
+                    const price = pricesMinor[code];
+                    const selected = currency === code;
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        disabled={configState !== "ready"}
+                        onClick={() => {
+                          setCurrency(code);
+                          clearErr("customNairaAmount");
+                        }}
+                        className={`flex h-[50px] min-w-[92px] flex-col items-center justify-center rounded-[12px] px-3 text-[14px] font-semibold transition-all disabled:cursor-wait disabled:opacity-60 ${
+                          selected
+                            ? "bg-[#0F6E56] text-white shadow-sm"
+                            : "border border-[#D1D5DB] bg-white text-[#374151] hover:border-gray-400"
+                        }`}
+                        title={CURRENCIES[code].label}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span aria-hidden>{CURRENCIES[code].flag}</span>
+                          {code}
+                        </span>
+                        {typeof price === "number" && (
+                          <span className={`text-[10px] ${selected ? "text-white/75" : "text-[#6B7280]"}`}>
+                            {formatMoneyMinor(price, code)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {currency === "NGN" ? (
+                <Field
+                  htmlFor="field-customNairaAmount"
+                  label="Registration amount"
+                  error={fieldErrors.customNairaAmount}
+                  hint={
+                    isGroup
+                      ? "Calculated automatically from the standard price and your participant count."
+                      : `Minimum is ${formatMoneyMinor(minimumNairaMinor, "NGN")}.`
+                  }
+                >
+                  <div className="flex h-[60px] w-full overflow-hidden rounded-[12px] border border-[#D1D5DB] transition focus-within:border-[#0F6E56] focus-within:ring-2 focus-within:ring-[#0F6E56]/20">
+                    <span className="flex w-[54px] shrink-0 items-center justify-center border-r border-[#E5E7EB] bg-[#F4F4F2] text-[18px] font-bold text-[#111C18]">
+                      ₦
+                    </span>
+                    <input
+                      id="field-customNairaAmount"
+                      type="number"
+                      inputMode="numeric"
+                      step="1"
+                      readOnly={isGroup}
+                      value={
+                        isGroup
+                          ? standardGroupNairaMinor !== null
+                            ? String(standardGroupNairaMinor / 100)
+                            : ""
+                          : customNairaAmount
+                      }
+                      onChange={(event) => {
+                        if (isGroup) return;
+                        setCustomNairaAmount(event.target.value);
+                        clearErr("customNairaAmount");
+                      }}
+                      {...fp("customNairaAmount")}
+                      className="min-w-0 flex-1 bg-white px-4 text-[18px] font-bold text-[#111C18] outline-none sm:text-[20px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                  </div>
+                </Field>
+              ) : (
+                <div className="rounded-[12px] border border-[#E5E7EB] bg-[#F8FAF9] p-4 text-[14px] text-[#374151]">
+                  {typeof unitMinor === "number"
+                    ? `You will pay ${formatMoneyMinor(unitMinor, currency)} per participant in ${currency}.`
+                    : `The ${currency} price is not available right now.`}
+                </div>
+              )}
+
+              {!isGroup && currency === "NGN" && nairaChips.length > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  {nairaChips.map((chip) => (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      onClick={() => {
+                        setCustomNairaAmount(String(chip.minor / 100));
+                        clearErr("customNairaAmount");
+                      }}
+                      className={`h-[46px] rounded-[12px] px-5 text-[14px] font-bold transition-all ${
+                        customNairaMinor === chip.minor
+                          ? "bg-[#0F6E56] text-white shadow-sm"
+                          : "border border-[#D1D5DB] bg-white text-[#374151] hover:border-gray-400"
+                      }`}
+                    >
+                      {chip.label} {formatMoneyMinor(chip.minor, "NGN")}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {(configState === "error" || (configState === "ready" && !registrationOpen)) && (
+                <div
+                  role={configState === "error" ? "alert" : "status"}
+                  className="flex items-start gap-2 rounded-[12px] border border-rose-200 bg-rose-50 p-4 text-[13px] text-rose-800"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    {configState === "error"
+                      ? "Registration pricing could not be loaded. Refresh the page to try again."
+                      : "Online registration is closed."}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {footerButtons()}
+          </>
+        )}
+
+        {/* Step 6: review and pay */}
+        {step === TOTAL_STEPS && (
+          <>
+            <div>
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
+                Review and confirm
+              </h1>
+              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
+                Check your details before the secure checkout.
+              </p>
+            </div>
+
+            <div className="divide-y divide-[#E5E7EB] pt-2">
+              <SummaryRow label="Category">
+                {isGroup ? "Group participants" : "Individual participant"}
+              </SummaryRow>
+              {isGroup && groupName.trim() && (
+                <SummaryRow label="Chapter / zone">{groupName.trim()}</SummaryRow>
+              )}
+              <SummaryRow label="Participants">{effectiveSeats}</SummaryRow>
+              {(currency !== "NGN" || isGroup) && typeof unitMinor === "number" && (
+                <SummaryRow label="Standard price per participant">
+                  {formatMoneyMinor(unitMinor, currency)}
+                </SummaryRow>
+              )}
+              {!isGroup && (
+                <>
+                  <SummaryRow label="Title">
+                    {gender === "male" ? "Brother" : "Sister"}
+                  </SummaryRow>
+                  <SummaryRow label="Attendance history">
+                    {firstTime === "yes" ? "First-time" : "Returning"}
+                  </SummaryRow>
+                </>
+              )}
+              <SummaryRow label="Attendance">
+                {attendanceSummary.split(" · ").map((part, index) => (
+                  <span key={`${part}-${index}`}>
+                    {index > 0 && (
+                      <>
+                        <span className="hidden sm:inline"> · </span>
+                        <br className="sm:hidden" />
+                      </>
+                    )}
+                    {part}
+                  </span>
+                ))}
+              </SummaryRow>
+              <SummaryRow label="Location">
+                {country}
+                {state ? `, ${state}` : ""}
+              </SummaryRow>
+              {payerEmail.trim() && (
+                <SummaryRow label="Email">{payerEmail.trim()}</SummaryRow>
+              )}
+              {!isGroup && isMinor && guardianName.trim() && (
+                <SummaryRow label="Guardian">
+                  {guardianName.trim()}
+                  {guardianPhone.trim() ? ` (${guardianPhone.trim()})` : ""}
+                </SummaryRow>
+              )}
+            </div>
+
+            <div className="flex items-baseline justify-between border-t border-[#E5E7EB] pb-2 pt-4">
+              <div>
+                <div className="text-[17px] font-bold text-[#111C18] sm:text-[18px]">Total payable</div>
+                <div className="mt-0.5 text-[12px] text-[#6B7280] sm:text-[13px]">
+                  Includes all event materials and pass
+                </div>
+              </div>
+              <div className="text-[34px] font-extrabold tracking-tight text-[#111C18] sm:text-[40px]">
+                {formattedTotal}
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <label className="flex cursor-pointer select-none items-start gap-3">
+                <input
+                  id="field-consent"
+                  type="checkbox"
+                  checked={consent}
+                  aria-invalid={fieldErrors.consent ? true : undefined}
+                  aria-describedby={fieldErrors.consent ? "field-consent-error" : undefined}
+                  onChange={(event) => {
+                    setConsent(event.target.checked);
+                    clearErr("consent");
+                  }}
+                  className="mt-0.5 h-5 w-5 rounded border-gray-300 accent-[#0F6E56] focus:ring-[#0F6E56]"
+                />
+                <span className="text-[13px] leading-relaxed text-[#6B7280] sm:text-[14px]">
+                  I understand that registration fees are non-refundable. I consent to personal data processing
+                  under the <Link href="/privacy" className="font-medium text-[#0F6E56] underline">Privacy Policy</Link>{" "}
+                  and <Link href="/terms" className="font-medium text-[#0F6E56] underline">Terms</Link>.
+                </span>
+              </label>
+              {fieldErrors.consent && (
+                <p id="field-consent-error" role="alert" className="flex items-center gap-1.5 text-[13px] font-medium text-rose-600">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>{fieldErrors.consent}</span>
+                </p>
+              )}
+
+              {TURNSTILE_SITE_KEY && (
+                <div className="space-y-2">
+                  <div
+                    id="field-turnstile"
+                    ref={turnstileRef}
+                    className={`max-w-full overflow-hidden rounded-[10px] ${fieldErrors.turnstile ? "ring-2 ring-rose-400" : ""}`}
+                    style={{ minHeight: 65 }}
+                  />
+                  {fieldErrors.turnstile && (
+                    <p role="alert" className="flex items-center gap-1.5 text-[13px] font-medium text-rose-600">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span>{fieldErrors.turnstile}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {errorCount > 0 && (
+                <div role="alert" className="flex items-start gap-2 rounded-[12px] border border-rose-200 bg-rose-50 p-4 text-[13px] text-rose-800">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    {errorCount === 1 ? "1 field needs" : `${errorCount} fields need`} your attention.{" "}
+                    {firstInvalidField() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const key = firstInvalidField()!;
+                          goToStep(fieldStep(key));
+                          focusField(key);
+                        }}
+                        className="font-semibold underline"
+                      >
+                        Go to the first one
+                      </button>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {error && (
+                <div role="alert" className="flex items-start gap-2 rounded-[12px] border border-rose-200 bg-rose-50 p-4 text-[13px] text-rose-800">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {(configState === "error" || (configState === "ready" && !registrationOpen)) && (
+                <div
+                  role={configState === "error" ? "alert" : "status"}
+                  className="flex items-start gap-2 rounded-[12px] border border-rose-200 bg-rose-50 p-4 text-[13px] text-rose-800"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    {configState === "error"
+                      ? "Registration pricing could not be loaded. Refresh the page to try again."
+                      : "Online registration is closed."}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-5">
+              <button
+                type="button"
+                onClick={prevStep}
+                className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] transition hover:text-black"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={submitDisabled}
+                className="inline-flex h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-[#0F6E56] px-5 text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0D5E49] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Lock className="h-4 w-4" />
+                {loading
+                  ? "Initializing secure checkout..."
+                  : configState === "ready" && !registrationOpen
+                    ? "Registration closed"
+                    : totalMinor === null
+                      ? "Loading price..."
+                      : `Pay ${formattedTotal} securely`}
+              </button>
+            </div>
+          </>
+        )}
+      </form>
     </RegistrationLayout>
   );
+}
+
+function firstInvalidField() {
+  return FIELD_ORDER.find((key) => {
+    const el = document.getElementById(`field-${key}`);
+    return el?.getAttribute("aria-invalid") === "true";
+  });
 }

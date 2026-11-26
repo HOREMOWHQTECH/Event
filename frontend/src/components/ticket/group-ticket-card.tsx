@@ -52,7 +52,7 @@ export function GroupTicketCard({ group, order }: { group: GroupTicket; order: T
           <div className="break-words text-xl font-extrabold text-[#111320]">
             {order.groupName || "Conference Group"}
           </div>
-          <div className="mt-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">Paid seats</div>
+          <div className="mt-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">Paid participants</div>
           <div className="text-2xl font-black text-[#0E7A6E]">{group.totalSeats}</div>
           <div className="mt-2 font-mono text-[11px] text-gray-500">Order {order.reference}</div>
         </div>

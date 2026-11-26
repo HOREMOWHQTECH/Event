@@ -164,7 +164,7 @@ export function ScrollTrace() {
           {/* Only typed letters show - no ghost */}
           <div className="pointer-events-none absolute left-[28px] top-0 flex h-full items-center justify-center overflow-hidden">
             <span
-              className="whitespace-nowrap text-[9px] font-extrabold uppercase tracking-[0.28em] text-[#8EE3D6]"
+              className="trace-type whitespace-nowrap text-[9px] font-extrabold uppercase tracking-[0.28em] text-white"
               style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
             >
               {typedText}
@@ -252,7 +252,7 @@ export function ScrollTrace() {
       >
         {/* Only typed letters show - starts empty, grows as car moves */}
         <div className="pointer-events-none absolute inset-x-2 top-[-2px] z-10 flex justify-center">
-          <span className="max-w-full truncate text-center text-[8.5px] font-extrabold uppercase leading-none tracking-[0.14em] text-white sm:text-[9.5px] sm:tracking-[0.18em]">
+          <span className="trace-type inline-block max-w-full truncate text-center text-[8.5px] font-extrabold uppercase leading-none tracking-[0.14em] text-white sm:text-[9.5px] sm:tracking-[0.18em]">
             {typedText}
             {!isComplete && (
               <span className="ml-0.5 inline-block h-2.5 w-[1.5px] translate-y-[2px] animate-pulse bg-[#8EE3D6]" />

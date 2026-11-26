@@ -18,7 +18,7 @@ export function Header() {
   const navLinks = [
     { label: "Home", href: "/" },
     { label: "About", href: "/about" },
-    { label: "Conference", href: "/conference" },
+    { label: "IHC26", href: "/conference" },
     { label: "Programme", href: "/programme" },
     { label: "Ministers", href: "/ministers" },
     { label: "Camp Info", href: "/camp-info" },
@@ -88,8 +88,8 @@ export function Header() {
                 style={{ width: "auto" }}
                 priority
               />
-              <span className="font-heading text-xs sm:text-sm font-extrabold tracking-widest text-[#0E1020] uppercase">
-                Registration
+              <span className="font-heading text-xl sm:text-2xl font-semibold leading-none tracking-normal text-[#0E1020]">
+                IHC<span className="text-[#0E7A6E]">26</span>
               </span>
             </Link>
 

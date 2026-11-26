@@ -40,10 +40,10 @@ const staffUserSchema = new mongoose.Schema(
       type: String,
       enum: {
         values: STAFF_ROLES,
-        message: 'Role must be one of: attendant, supervisor, finance, admin',
+        message: 'Role must be one of: staff, admin',
       },
       required: true,
-      default: 'attendant',
+      default: 'staff',
     },
     totpSecret: {
       type: String,

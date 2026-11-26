@@ -150,7 +150,7 @@ async function alreadyRecorded(idempotencyKey: string): Promise<GateScanResponse
   } as GateScanResponse;
 }
 
-/** Records one gate scan. A group QR checks in every paid seat on the order. */
+/** Records one gate scan. A group QR checks in every paid participant on the order. */
 export async function recordGateScan(input: GateScanInput): Promise<GateScanResponse> {
   let token = String(input.qrToken || '').trim();
   const standId = String(input.standId || '').trim();
@@ -283,7 +283,7 @@ export async function recordGateScan(input: GateScanInput): Promise<GateScanResp
         refCode: order.reference,
         chapterZone: order.groupName || null,
       },
-      message: `Group checked in — ${group.totalSeats} paid seats.`,
+      message: `Group checked in — ${group.totalSeats} paid participants.`,
     };
   }
 

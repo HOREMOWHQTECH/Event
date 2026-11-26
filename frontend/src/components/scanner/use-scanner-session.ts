@@ -46,6 +46,7 @@ function normalizeManualCode(value: string): string {
 
 export function useScannerSession() {
   const lastScanRef = useRef<string>("");
+  const pausedCameraRef = useRef(false);
   const processScanRef = useRef<(token: string) => Promise<void>>(async () => {});
 
   // The camera hook owns the stream, decoder, torch and image upload. It stays
@@ -54,7 +55,9 @@ export function useScannerSession() {
     void processScanRef.current(value);
   });
 
-  const [standId, setStandId] = useState("Gate A");
+  // The scanner has no gate/stand picker; one neutral location keeps the
+  // server-side scan record valid without exposing gate wording in the UI.
+  const standId = "check-in";
   const [manualCode, setManualCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [scanResult, setScanResult] = useState<ScanStatus>({ type: "idle" });
@@ -67,13 +70,27 @@ export function useScannerSession() {
     return match ? decodeURIComponent(match[1]) : null;
   };
 
+  // Stop decoding as soon as a scan resolves. The result modal owns the next
+  // step; the camera only restarts when the user taps "Next Scan".
+  const pauseScanning = () => {
+    if (scanner.cameraActive && !pausedCameraRef.current) {
+      pausedCameraRef.current = true;
+      scanner.stopCamera();
+    }
+  };
+
+  const showResult = (result: ScanStatus) => {
+    pauseScanning();
+    setScanResult(result);
+  };
+
   const processScan = async (token: string) => {
     setBusy(true);
     setScanResult({ type: "idle" });
 
     const staffToken = getStaffToken();
     if (!staffToken) {
-      setScanResult({ type: "error", message: "Not logged in. Please log in again." });
+      showResult({ type: "error", message: "Not logged in. Please log in again." });
       setBusy(false);
       return;
     }
@@ -96,7 +113,7 @@ export function useScannerSession() {
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 401 || res.status === 403) {
-        setScanResult({
+        showResult({
           type: "error",
           message: "Your session has expired. Please log in again.",
         });
@@ -104,12 +121,12 @@ export function useScannerSession() {
       }
 
       if (data.result === "forged" || res.status === 404) {
-        setScanResult({ type: "forged", message: data.error || "Invalid or forged ticket." });
+        showResult({ type: "forged", message: data.error || "Invalid or forged ticket." });
         return;
       }
 
       if (data.result === "already_checked_in" || res.status === 409) {
-        setScanResult({
+        showResult({
           type: "already_checked_in",
           isGroup: !!data.isGroup,
           seats: Number(data.seats) || 1,
@@ -121,14 +138,14 @@ export function useScannerSession() {
       }
 
       if (!res.ok || data.result !== "valid") {
-        setScanResult({
+        showResult({
           type: "error",
           message: data.error || "Scan failed. Please try again.",
         });
         return;
       }
 
-      setScanResult({
+      showResult({
         type: "valid",
         isGroup: !!data.isGroup,
         seats: Number(data.seats) || 1,
@@ -138,7 +155,7 @@ export function useScannerSession() {
       });
       lastScanRef.current = token;
     } catch (err: any) {
-      setScanResult({ type: "error", message: err?.message || "Network error." });
+      showResult({ type: "error", message: err?.message || "Network error." });
     } finally {
       setBusy(false);
     }
@@ -156,6 +173,10 @@ export function useScannerSession() {
   const dismissResult = () => {
     setScanResult({ type: "idle" });
     lastScanRef.current = "";
+    if (pausedCameraRef.current) {
+      pausedCameraRef.current = false;
+      void scanner.startCamera();
+    }
   };
 
   const handleFullSync = async () => {
@@ -195,7 +216,6 @@ export function useScannerSession() {
     syncing,
     syncMessage,
     lastScanToken: lastScanRef.current,
-    updateStandId: setStandId,
     setManualCode,
     submitManual,
     dismissResult,
