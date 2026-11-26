@@ -229,6 +229,8 @@ function SummaryRow({ label, children }: { label: string; children: React.ReactN
   );
 }
 
+
+
 function StepProgress({ step }: { step: number }) {
   return (
     <div className="mb-8 w-full" aria-label={`Step ${step} of ${TOTAL_STEPS}`}>
