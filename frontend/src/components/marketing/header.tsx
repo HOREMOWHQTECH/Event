@@ -4,236 +4,235 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Phone, Mail, Menu, X, MessageCircle, Share2 } from "lucide-react";
-import { FacebookIcon, YoutubeIcon, XIcon } from "@/components/icons/social-icons";
-import { SITE_CONFIG } from "@/config/site";
+import { ChevronDown, Menu, X, ArrowRight } from "lucide-react";
+import { CONFERENCE_INFO } from "@/data/conference";
+
+const PRIMARY_LINKS = [
+  { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
+  { label: "IHC26", href: "/conference" },
+  { label: "Programme", href: "/programme" },
+  { label: "Ministers", href: "/ministers" },
+  { label: "Find My Tickets", href: "/find-my-tickets" },
+];
+
+const MORE_LINKS = [
+  { label: "Camp Information", href: "/camp-info" },
+  { label: "FAQ", href: "/faq" },
+  { label: "Contact", href: "/contact" },
+];
+
+const ALL_LINKS = [
+  { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
+  { label: "IHC26", href: "/conference" },
+  { label: "Programme", href: "/programme" },
+  { label: "Ministers", href: "/ministers" },
+  { label: "Camp Information", href: "/camp-info" },
+  { label: "Find My Tickets", href: "/find-my-tickets" },
+  { label: "FAQ", href: "/faq" },
+  { label: "Contact", href: "/contact" },
+];
 
 export function Header() {
-  const pathname = usePathname();
-  const isRegisterPage = pathname?.startsWith("/register") ?? false;
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showSocialBar, setShowSocialBar] = useState(true);
-  const lastScrollY = useRef(0);
+  const pathname = usePathname() ?? "/";
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
 
-  const navLinks = [
-    { label: "Home", href: "/" },
-    { label: "About", href: "/about" },
-    { label: "IHC26", href: "/conference" },
-    { label: "Programme", href: "/programme" },
-    { label: "Ministers", href: "/ministers" },
-    { label: "Camp Info", href: "/camp-info" },
-    { label: "Find My Tickets", href: "/find-my-tickets" },
-    { label: "FAQ", href: "/faq" },
-    { label: "Contact", href: "/contact" },
-  ];
-
-  // Hide the social bar on scroll-down, show it on scroll-up. Reading scroll
-  // in a rAF and keeping the previous value in a ref means no React render (and
-  // no listener churn) on every scroll event.
   useEffect(() => {
-    let raf = 0;
-
-    const update = () => {
-      raf = 0;
-      const current = window.scrollY;
-      const previous = lastScrollY.current;
-      lastScrollY.current = current;
-      const shouldShow = !(current > previous && current > 60);
-      setShowSocialBar((shown) => (shown === shouldShow ? shown : shouldShow));
-    };
-
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMoreOpen(false);
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKey);
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKey);
     };
   }, []);
 
-  const socials = [
-    { href: SITE_CONFIG.socials.facebook, icon: <FacebookIcon className="w-3.5 h-3.5" />, label: "Facebook" },
-    { href: SITE_CONFIG.socials.youtube, icon: <YoutubeIcon className="w-3.5 h-3.5" />, label: "YouTube" },
-    { href: SITE_CONFIG.socials.x, icon: <XIcon className="w-3.5 h-3.5" />, label: "X" },
-    { href: SITE_CONFIG.contact.whatsAppUrl, icon: <MessageCircle className="w-3.5 h-3.5" strokeWidth={1.5} />, label: "WhatsApp" },
-  ];
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
-  const handleShare = () => {
-    if (!navigator.share) return;
-    navigator
-      .share({
-        title: SITE_CONFIG.eventTitle,
-        text: `${SITE_CONFIG.eventTitle} — Theme: "${SITE_CONFIG.theme}"`,
-        url: window.location.href,
-      })
-      .catch(() => {});
-  };
+  const isMoreActive = MORE_LINKS.some((item) => item.href === pathname);
 
   return (
-    <>
-      <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] h-[60px]">
-        <div className="max-w-[1440px] mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
-          
-          {/* Left: Logo + desktop navigation */}
-          <div className="flex items-center gap-6 xl:gap-10">
-            <Link href="/" className="flex shrink-0 items-center gap-2">
-              <Image
-                src={SITE_CONFIG.logo.src}
-                alt={SITE_CONFIG.logo.alt}
-                width={SITE_CONFIG.logo.width}
-                height={SITE_CONFIG.logo.height}
-                className="h-8 sm:h-9 w-auto object-contain"
-                style={{ width: "auto" }}
-                priority
-              />
-              <span className="font-heading text-xl sm:text-2xl font-semibold leading-none tracking-normal text-[#0E1020]">
-                IHC<span className="text-[#0E7A6E]">26</span>
-              </span>
-            </Link>
-
-            <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-3 xl:gap-5">
-              {navLinks.map((link) => {
-                const active = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    aria-current={active ? "page" : undefined}
-                    className={`relative whitespace-nowrap text-[11px] xl:text-xs font-semibold transition-colors ${
-                      active ? "text-[#0E1020]" : "text-gray-600 hover:text-[#0E1020]"
-                    }`}
-                  >
-                    {link.label}
-                    {active && (
-                      <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-[#8EE3D6]" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Right: Desktop socials, Phone, Register, Mobile Menu */}
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {/* Desktop: social bar lives in the header, right beside the phone icon.
-                Hidden on the registration page to keep the form distraction-free. */}
-            {!isRegisterPage && (
-              <div className="hidden lg:flex items-center gap-1.5">
-                {socials.map((social) => (
-                  <a
-                    key={`header-${social.label}`}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={social.label}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
-                  >
-                    {social.icon}
-                  </a>
-                ))}
-                <button
-                  onClick={handleShare}
-                  aria-label="Share"
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
-                >
-                  <Share2 className="w-3.5 h-3.5" strokeWidth={1.5} />
-                </button>
-              </div>
-            )}
-
-            <a
-              href={SITE_CONFIG.contact.phoneTel}
-              aria-label={`Call ${SITE_CONFIG.contact.phone}`}
-              className="w-9 h-9 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
-              title={SITE_CONFIG.contact.phone}
-            >
-              <Phone className="w-4 h-4" strokeWidth={1.5} />
-            </a>
-
-            <Link
-              href="/register"
-              className="hidden md:inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-[#8EE3D6] text-[#0E1020] font-semibold text-xs tracking-wide hover:bg-[#7BD4C7] transition-colors ml-1"
-            >
-              Register Now
-            </Link>
-
-            {/* Mobile menu trigger */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle navigation menu"
-              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Drawer */}
-        {mobileMenuOpen && (
-          <div data-lenis-prevent className="md:hidden fixed inset-x-0 top-[60px] bottom-0 bg-white z-40 p-6 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-top-2 duration-200">
-            <nav className="flex flex-col space-y-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-lg font-semibold text-[#111320] hover:text-[#0E1020] py-2 border-b border-gray-100"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-            
-            <div className="pt-6 space-y-3">
-              <Link
-                href="/register"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full inline-flex items-center justify-center px-6 py-3 rounded-full bg-[#8EE3D6] text-[#0E1020] font-bold text-sm tracking-wide shadow-sm"
-              >
-                Register Now (Individual / Group)
-              </Link>
-              <div className="text-center text-xs text-gray-500 pt-2">
-                Help desk: {SITE_CONFIG.contact.phone}
-              </div>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Bottom Floating Social Bar (hidden on /register, while the menu drawer
-          is open, and on scroll down; reveals on scroll up) */}
-      {!isRegisterPage && !mobileMenuOpen && (
+    <header className="fixed inset-x-0 top-3 z-50 px-3 sm:top-5 sm:px-5">
       <div
-        className={`lg:hidden fixed bottom-2 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ${
-          showSocialBar ? "translate-y-0 opacity-100" : "translate-y-24 opacity-0"
+        className={`relative mx-auto flex h-[60px] max-w-[1240px] items-center justify-between gap-4 rounded-2xl border pr-2 pl-4 backdrop-blur-xl transition-all duration-300 lg:h-[66px] lg:pl-5 ${
+          scrolled
+            ? "border-[#e5e7eb] bg-white/92 shadow-[0_14px_38px_-12px_rgba(17,24,39,0.12)]"
+            : "border-[#e5e7eb]/90 bg-white/80 shadow-[0_6px_24px_-10px_rgba(17,24,39,0.06)]"
         }`}
       >
-        <div className="flex items-center gap-2 rounded-full bg-white/90 backdrop-blur-md px-3 py-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100">
-          {socials.map((social) => (
-            <a
-              key={social.label}
-              href={social.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={social.label}
-              className="w-9 h-9 rounded-full bg-gray-50 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
+        {/* Zone 1: Brand Logo + Wordmark */}
+        <Link
+          href="/"
+          aria-label="HOREMOW International Holiness General Conference 2026 Home"
+          className="inline-flex items-center gap-2.5 shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7a6e] rounded-lg"
+        >
+          <Image
+            src={CONFERENCE_INFO.assets.logo}
+            alt="HOREMOW Official Logo"
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-full border border-[#e5e7eb] bg-white p-0.5 object-contain shrink-0"
+            priority
+          />
+          <span className="text-[15px] font-semibold tracking-tight text-[#111827] whitespace-nowrap">
+            HOREMOW · IHC26
+          </span>
+        </Link>
+
+        {/* Zone 2: Desktop Navigation Links */}
+        <nav aria-label="Primary navigation" className="hidden items-center gap-0.5 xl:flex">
+          {PRIMARY_LINKS.map((link) => {
+            const active = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`rounded-lg px-2.5 py-2 text-[14px] whitespace-nowrap shrink-0 transition-colors ${
+                  active
+                    ? "bg-[#eaf5f3] text-[#0e7a6e] font-medium"
+                    : "text-[#4b5563] hover:bg-[#f3f4f6] hover:text-[#111827]"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+
+          <div ref={moreRef} className="relative">
+            <button
+              type="button"
+              aria-expanded={moreOpen}
+              aria-controls="header-more-menu"
+              onClick={() => setMoreOpen((v) => !v)}
+              className={`flex items-center gap-1 rounded-lg px-2.5 py-2 text-[14px] whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                isMoreActive || moreOpen
+                  ? "bg-[#eaf5f3] text-[#0e7a6e] font-medium"
+                  : "text-[#4b5563] hover:bg-[#f3f4f6] hover:text-[#111827]"
+              }`}
             >
-              {social.icon}
-            </a>
-          ))}
-          <div className="w-px h-6 bg-gray-200 mx-1" />
-          <button
-            onClick={handleShare}
-            aria-label="Share"
-            className="w-9 h-9 rounded-full bg-gray-50 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
+              <span>More</span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {moreOpen && (
+              <div
+                id="header-more-menu"
+                className="absolute top-[calc(100%+12px)] right-0 w-56 rounded-2xl border border-[#e5e7eb] bg-white p-2 shadow-[0_20px_50px_-15px_rgba(17,24,39,0.15)]"
+              >
+                {MORE_LINKS.map((item) => {
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMoreOpen(false)}
+                      className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 text-[14px] whitespace-nowrap transition-colors ${
+                        active
+                          ? "bg-[#eaf5f3] text-[#0e7a6e] font-medium"
+                          : "text-[#374151] hover:bg-[#f3f4f6] hover:text-[#111827]"
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <ArrowRight className="h-3.5 w-3.5 text-[#9ca3af]" />
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </nav>
+
+        {/* Zone 3: Green Primary Action + Mobile Trigger */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/register"
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-[#0e7a6e] px-4 text-[14px] font-semibold text-white whitespace-nowrap shrink-0 transition-colors hover:bg-[#0a5e54]"
           >
-            <Share2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+            Register Now
+          </Link>
+
+          <button
+            type="button"
+            aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#e5e7eb] bg-[#f9fafb] text-[#111827] transition-colors hover:bg-[#f3f4f6] xl:hidden cursor-pointer"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
+
+      {/* Mobile & Tablet Drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-x-3 top-[78px] bottom-3 z-40 overflow-y-auto rounded-2xl border border-[#e5e7eb] bg-white/98 p-4 shadow-2xl backdrop-blur-2xl sm:inset-x-5 sm:top-[92px] xl:hidden">
+          <nav aria-label="Mobile navigation" className="flex flex-col gap-1">
+            {ALL_LINKS.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center justify-between rounded-xl px-4 py-3.5 text-[16px] transition-colors ${
+                    active
+                      ? "bg-[#eaf5f3] text-[#0e7a6e] font-medium"
+                      : "text-[#1f2937] hover:bg-[#f3f4f6]"
+                  }`}
+                >
+                  <span>{link.label}</span>
+                  <ArrowRight className="h-4 w-4 text-[#9ca3af]" />
+                </Link>
+              );
+            })}
+
+            <div className="mt-4 border-t border-[#e5e7eb] pt-4 grid gap-2.5">
+              <Link
+                href="/register"
+                onClick={() => setMobileOpen(false)}
+                className="btn btn-primary w-full"
+              >
+                Register Now
+              </Link>
+              <Link
+                href="/find-my-tickets"
+                onClick={() => setMobileOpen(false)}
+                className="btn btn-outline w-full"
+              >
+                Find My Tickets
+              </Link>
+            </div>
+          </nav>
+        </div>
       )}
-    </>
+    </header>
   );
 }

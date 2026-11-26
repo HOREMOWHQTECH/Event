@@ -1,186 +1,242 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MessageCircle, Phone, ArrowUpRight } from "lucide-react";
-import { FacebookIcon, YoutubeIcon, XIcon } from "@/components/icons/social-icons";
-import { SITE_CONFIG } from "@/config/site";
+import { CONFERENCE_INFO, GALLERY_PHOTOS } from "@/data/conference";
 
 export function Footer() {
+  const marqueeItems = [...GALLERY_PHOTOS, ...GALLERY_PHOTOS];
+
   return (
-    <footer
-      data-scene="arrival"
-      data-trace-node
-      data-trace-label="Footer"
-      className="w-full bg-[#0E1020]/85 text-gray-300"
-    >
-      {/* 3-Column Main Footer */}
-      <div className="max-w-[1240px] mx-auto px-6 sm:px-8 py-16 lg:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
-          
-          {/* Column 1: Logo & Blurb (5 cols) */}
-          <div className="md:col-span-5 space-y-4">
-            <div className="inline-block bg-white p-2.5 rounded-xl shadow-sm">
-              <Image
-                src={SITE_CONFIG.logo.src}
-                alt={SITE_CONFIG.logo.alt}
-                width={130}
-                height={40}
-                className="h-7 w-auto object-contain"
-                style={{ width: "auto" }}
-              />
-            </div>
-            <p className="text-sm text-gray-400 leading-relaxed max-w-sm pt-2">
-              Horemow is a non-denominational Christian ministry. IHGC 2026 will take place at Holiness Campground, Kwali, Abuja, from 8 to 11 December.
-            </p>
-            <div className="pt-2 text-xs text-gray-400">
-              <span className="font-semibold text-gray-300">Campground Location:</span> Behind FGC, Kwali, Abuja, Nigeria.
-            </div>
-          </div>
-
-          {/* Column 2: Social & Contact Links (3 cols) */}
-          <div className="md:col-span-3 space-y-4">
-            <h4 className="text-sm font-bold uppercase tracking-wider text-white">
-              Social Links
-            </h4>
-            <ul className="space-y-3 text-sm">
-              <li>
-                <a
-                  href={SITE_CONFIG.socials.youtube}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 text-gray-400 hover:text-[#8EE3D6] transition-colors"
-                >
-                  <YoutubeIcon className="w-4 h-4 text-red-400" />
-                  <span>YouTube Channel</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href={SITE_CONFIG.socials.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 text-gray-400 hover:text-[#8EE3D6] transition-colors"
-                >
-                  <FacebookIcon className="w-4 h-4 text-blue-400" />
-                  <span>Facebook Page</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href={SITE_CONFIG.socials.x}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 text-gray-400 hover:text-[#8EE3D6] transition-colors"
-                >
-                  <XIcon className="w-4 h-4" />
-                  <span>X</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href={SITE_CONFIG.contact.whatsAppUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 text-gray-400 hover:text-[#8EE3D6] transition-colors"
-                >
-                  <MessageCircle className="w-4 h-4 text-emerald-400" />
-                  <span>WhatsApp Helpline</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href={SITE_CONFIG.contact.phoneTel}
-                  className="inline-flex items-center gap-2.5 text-gray-400 hover:text-[#8EE3D6] transition-colors"
-                >
-                  <Phone className="w-4 h-4 text-[#8EE3D6]" />
-                  <span>{SITE_CONFIG.contact.phone}</span>
-                </a>
-              </li>
-            </ul>
-
-            <div className="pt-4 border-t border-white/10">
-              <div className="text-xs font-semibold uppercase tracking-wider text-white mb-2">
-                Legal & Info
-              </div>
-              <div className="flex flex-col space-y-1.5 text-xs text-gray-400">
-                <Link href="/terms" className="hover:text-white transition-colors">
-                  Terms & Refund Policy (Draft)
-                </Link>
-                <Link href="/privacy" className="hover:text-white transition-colors">
-                  Privacy Notice (Draft)
-                </Link>
-                <Link href="/camp-info" className="hover:text-white transition-colors">
-                  Campground & Accommodation
-                </Link>
-                <Link href="/find-my-tickets" className="hover:text-white transition-colors">
-                  Find My Tickets
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Column 3: Upcoming Event Cards with Outlined Pill Buttons (4 cols) */}
-          <div className="md:col-span-4 space-y-4">
-            <h4 className="text-sm font-bold uppercase tracking-wider text-white">
-              Upcoming Event
-            </h4>
-
-            {/* Event Card 1: IHGC 2026 */}
-            <div className="bg-[#121528] rounded-[16px] p-4 border border-white/5 space-y-3">
-              <div className="image-frame relative aspect-[16/7] overflow-hidden bg-gray-900">
+    <footer className="relative isolate overflow-hidden border-t border-[#e5e7eb] bg-[#f4f5f7] pt-16 sm:pt-20">
+      {/* Conference Photography Marquee */}
+      <div aria-label="Moments from previous conferences" role="group" className="relative overflow-hidden">
+        <div className="marquee">
+          <ul className="flex shrink-0 gap-3 pr-3 sm:gap-4 sm:pr-4">
+            {marqueeItems.map((photo, idx) => (
+              <li
+                key={`${photo.src}-${idx}`}
+                className="relative h-[112px] w-[168px] shrink-0 overflow-hidden rounded-xl border border-[#e5e7eb] bg-white sm:h-[156px] sm:w-[234px]"
+              >
                 <Image
-                  src="/images/conference_flyer.png"
-                  alt="IHGC 2026 Conference Flyer"
-                  fill
-                    className="object-contain"
-                  sizes="400px"
-                  quality={95}
+                  src={photo.src}
+                  alt={photo.alt}
+                  width={234}
+                  height={156}
+                  loading="lazy"
+                  className="h-full w-full object-cover"
                 />
-                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-[10px] font-semibold text-[#8EE3D6] backdrop-blur-xs">
-                  8 – 11 Dec 2026
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-400">Kwali, Abuja • Campground</div>
-                <div className="text-sm font-bold text-white leading-snug pt-0.5">
-                  IHGC 2026 General Conference
-                </div>
-              </div>
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center w-full py-2 rounded-full border border-white/40 text-xs font-semibold text-white hover:bg-white hover:text-[#0E1020] hover:border-white transition-colors"
-              >
-                Get Tickets (₦5,000 / $20)
-              </Link>
-            </div>
-
-            {/* Event Card 2: Group Registration Pass */}
-            <div className="bg-[#121528] rounded-[16px] p-4 border border-white/5 space-y-3">
-              <div className="text-xs text-[#8EE3D6] font-semibold uppercase tracking-wider">
-                Group Pass (Chapter / Zone)
-              </div>
-              <div className="text-xs text-gray-300 leading-snug">
-                Register entire chapters/zones or groups with express check-in QR and leader dashboard.
-              </div>
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center w-full py-2 rounded-full border border-white/40 text-xs font-semibold text-white hover:bg-white hover:text-[#0E1020] hover:border-white transition-colors"
-              >
-                Register Group
-              </Link>
-            </div>
-
-          </div>
-
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-3 pt-8 pb-2 text-[12px] leading-none font-medium text-white">
+                  {photo.tag}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
-      {/* Lighter Bottom Copyright Bar (#171A2B) */}
-      <div className="w-full bg-[#171A2B] border-t border-white/5 py-4 px-6 text-center text-xs text-gray-400">
-        <div className="max-w-[1240px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>{SITE_CONFIG.copyright}</div>
-          <div className="text-gray-500">
-            Kwali, Abuja, Nigeria • WAT (UTC+1)
+      {/* Main Footer Content */}
+      <div className="container-site pt-16 pb-10 sm:pt-20">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-14">
+          {/* Ministry Identity & Venue */}
+          <div className="lg:col-span-5 space-y-5">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7a6e] rounded-lg"
+            >
+              <Image
+                src={CONFERENCE_INFO.assets.logo}
+                alt="HOREMOW Official Logo"
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-full border border-[#e5e7eb] bg-white p-1 object-contain"
+              />
+              <div>
+                <p className="text-lg font-semibold text-[#111827]">
+                  {CONFERENCE_INFO.ministryName}
+                </p>
+                <p className="text-xs font-medium tracking-wide text-[#0e7a6e]">
+                  {CONFERENCE_INFO.title}
+                </p>
+              </div>
+            </Link>
+
+            <p className="max-w-md text-[15px] leading-relaxed text-[#4b5563]">
+              HOREMOW is a non-denominational Christian movement dedicated to reviving biblical
+              righteousness, inward and outward holiness, complete sanctification, and preparing
+              believers globally for the rapture.
+            </p>
+
+            <div className="space-y-1.5 text-sm text-[#374151]">
+              <p>
+                <span className="text-[#6b7280]">Dates:</span> {CONFERENCE_INFO.dates} · Opens{" "}
+                {CONFERENCE_INFO.openingDate}
+              </p>
+              <p>
+                <span className="text-[#6b7280]">Venue:</span> {CONFERENCE_INFO.venue}
+              </p>
+              <p>
+                <span className="text-[#6b7280]">Helpline &amp; WhatsApp:</span>{" "}
+                <a
+                  href={CONFERENCE_INFO.contact.phoneTel}
+                  className="font-medium text-[#0e7a6e] hover:underline"
+                >
+                  {CONFERENCE_INFO.contact.phone}
+                </a>
+              </p>
+            </div>
           </div>
+
+          {/* Navigation Columns */}
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-7">
+            <nav aria-label="Explore conference">
+              <p className="text-lg font-semibold text-[#111827] sm:text-xl">Explore</p>
+              <ul className="mt-4 space-y-1">
+                <li>
+                  <Link href="/" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    Home
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/about" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    About HOREMOW
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/conference" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    IHC26 Overview
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/programme" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    Programme
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/ministers" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    Ministers
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+
+            <nav aria-label="Attend and support">
+              <p className="text-lg font-semibold text-[#111827] sm:text-xl">Participate</p>
+              <ul className="mt-4 space-y-1">
+                <li>
+                  <Link href="/register" className="block py-1.5 text-[15px] font-medium text-[#0e7a6e] transition-colors hover:text-[#0a5e54]">
+                    Register Now
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/find-my-tickets" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    Find My Tickets
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/camp-info" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    Camp Information
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/faq" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    FAQ
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="block py-1.5 text-[15px] text-[#4b5563] transition-colors hover:text-[#0e7a6e]">
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+
+            <div className="col-span-2 sm:col-span-1">
+              <p className="text-lg font-semibold text-[#111827] sm:text-xl">Registration</p>
+              <div className="mt-4 rounded-2xl border border-[#e5e7eb] bg-white p-4 space-y-3">
+                <p className="text-sm font-medium text-[#111827]">
+                  {CONFERENCE_INFO.datesNumeric} · Kwali, Abuja
+                </p>
+                <p className="text-xs leading-relaxed text-[#4b5563]">
+                  Flat rate of ₦5,000 / $20 / €20 / £20 per participant for individuals and groups.
+                </p>
+                <Link
+                  href="/register"
+                  className="inline-flex w-full items-center justify-center rounded-lg bg-[#0e7a6e] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0a5e54]"
+                >
+                  Register Now
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Copyright & Social Row */}
+        <div className="mt-14 flex flex-col-reverse gap-6 border-t border-[#e5e7eb] pt-8 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-[#4b5563]">
+            © 2026 Holiness Revival Movement Worldwide (HOREMOW). All Rights Reserved ·{" "}
+            <Link href="/privacy" className="py-1 text-[#111827] hover:text-[#0e7a6e]">
+              Privacy Notice
+            </Link>{" "}
+            ·{" "}
+            <Link href="/terms" className="py-1 text-[#111827] hover:text-[#0e7a6e]">
+              Terms &amp; Refund Policy
+            </Link>
+          </p>
+
+          <ul className="flex items-center gap-5" aria-label="Official social media channels">
+            <li>
+              <a
+                href={CONFERENCE_INFO.contact.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="HOREMOW YouTube"
+                className="block text-[#4b5563] transition-all hover:-translate-y-0.5 hover:text-[#0e7a6e]"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
+                  <polygon points="10 15 15 12 10 9 10 15" fill="currentColor" stroke="none" />
+                </svg>
+              </a>
+            </li>
+            <li>
+              <a
+                href={CONFERENCE_INFO.contact.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="HOREMOW Facebook"
+                className="block text-[#4b5563] transition-all hover:-translate-y-0.5 hover:text-[#0e7a6e]"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                </svg>
+              </a>
+            </li>
+            <li>
+              <a
+                href={CONFERENCE_INFO.contact.x}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="HOREMOW X"
+                className="block text-[#4b5563] transition-all hover:-translate-y-0.5 hover:text-[#0e7a6e]"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.9 2H22l-6.78 7.75L23.2 22h-6.25l-4.9-7.38L5.6 22H2.46l7.25-8.29L1.8 2h6.4l4.43 6.77L18.9 2Zm-1.1 18h1.73L7.27 3.89H5.42L17.8 20Z" />
+                </svg>
+              </a>
+            </li>
+            <li>
+              <a
+                href={CONFERENCE_INFO.contact.whatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="HOREMOW WhatsApp Helpline"
+                className="block text-[#4b5563] transition-all hover:-translate-y-0.5 hover:text-[#0e7a6e]"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" />
+                </svg>
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
     </footer>

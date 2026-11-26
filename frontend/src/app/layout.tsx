@@ -1,19 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Montserrat, Inter } from "next/font/google";
+import { Onest, JetBrains_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import { SITE_CONFIG } from "@/config/site";
 import { InstallPromptGate } from "@/components/ui/install-prompt-gate";
 
-const montserrat = Montserrat({
+const onest = Onest({
   subsets: ["latin"],
-  variable: "--font-montserrat",
+  variable: "--font-onest",
   display: "swap",
-  weight: ["500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const inter = Inter({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-jetbrains",
   display: "swap",
   weight: ["400", "500", "600", "700"],
 });
@@ -56,8 +56,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
-      <body className="min-h-screen bg-white text-[#111320] antialiased selection:bg-[#8EE3D6] selection:text-[#0E1020]">
+    <html lang="en" className={`${onest.variable} ${jetbrainsMono.variable}`}>
+      <body className="min-h-screen bg-white text-[#4b5563] antialiased selection:bg-[#0e7a6e] selection:text-white">
         <InstallPromptGate />
         {children}
       </body>

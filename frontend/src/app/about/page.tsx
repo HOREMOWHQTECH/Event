@@ -1,286 +1,161 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
+import { CONFERENCE_INFO, ABOUT_PILLARS } from "@/data/conference";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
-import { BookOpen, Globe2, Heart, Users, MapPin } from "lucide-react";
+import { SITE_CONFIG } from "@/config/site";
 
-export const metadata = {
-  title: "About HOREMOW | Holiness Revival Movement Worldwide",
-  description: "Learn about the Holiness Revival Movement Worldwide (HOREMOW), founded by Pastor Paul Rika, its biblical mission, global presence, and the International Holiness General Conference.",
+export const metadata: Metadata = {
+  title: "About HOREMOW | IHGC 2026",
+  description:
+    "Learn about the Holiness Revival Movement Worldwide (HOREMOW), its origins, mission, ministries, and global reach.",
 };
 
 export default function AboutPage() {
+  const about = SITE_CONFIG.about;
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="relative isolate min-h-screen bg-white pt-28 pb-20 sm:pt-36 sm:pb-28">
       <Header />
+      <div aria-hidden="true" className="bg-ticks pointer-events-none absolute inset-x-0 top-0 h-[420px] -z-10" />
+      <div
+        aria-hidden="true"
+        className="glow absolute -top-[340px] left-1/2 -z-10 h-[720px] w-[1400px] -translate-x-1/2 [--glow-strength:0.22]"
+      />
 
-      {/* Hero Section */}
-      <section className="relative bg-[#0E1020] text-white py-20 sm:py-28 overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/images/crowd-bw_2.jpg"
-            alt="HOREMOW worshippers gathered"
-            fill
-            className="object-cover opacity-15"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0E1020]/90 via-[#0E1020]/80 to-[#0E1020]" />
-        </div>
-
-        <div className="relative z-10 max-w-[1240px] mx-auto px-6 sm:px-8 text-center space-y-4">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#8EE3D6]">
+      <div className="container-site space-y-16">
+        <div className="max-w-[780px] space-y-4">
+          <p className="text-sm font-medium tracking-wide text-[#0e7a6e]">
             About the Ministry
-          </span>
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
-            Holiness Revival Movement Worldwide
-          </h1>
-          <p className="text-base sm:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            A non-denominational Christian movement dedicated to reviving biblical righteousness, inward and outward holiness, and preparing believers across all churches for the rapture.
+          </p>
+          <h1 className="h-hero text-[#111827]">{CONFERENCE_INFO.ministryName}</h1>
+          <p className="text-base leading-relaxed text-[#4b5563] sm:text-lg">
+            A non-denominational Christian movement dedicated to reviving biblical righteousness,
+            inward and outward holiness, and preparing believers across all churches for the rapture.
           </p>
         </div>
-      </section>
 
-      {/* Main Content */}
-      <main className="flex-1 py-16 sm:py-24">
-        <div className="max-w-[1100px] mx-auto px-6 sm:px-8 space-y-20">
+        <div className="card bg-white overflow-hidden grid grid-cols-1 lg:grid-cols-12 shadow-xs">
+          <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 space-y-5">
+            <p className="text-xs font-medium tracking-wide text-[#0e7a6e]">
+              Overview &amp; Origins
+            </p>
+            <h2 className="h-section">An End-Time Movement Across the Body of Christ</h2>
+            <p className="text-base leading-relaxed text-[#4b5563]">{about.origins}</p>
+            <p className="text-base leading-relaxed text-[#4b5563]">{about.nature}</p>
 
-          {/* Section 1: Overview and Origins */}
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-            <div className="lg:col-span-6 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF9F7] text-[#0E7A6E] text-xs font-semibold">
-                <Users className="w-3.5 h-3.5" />
-                <span>Overview & Origins</span>
+            <dl className="grid grid-cols-1 gap-4 pt-4 border-t border-[#e5e7eb] sm:grid-cols-2 text-sm">
+              <div>
+                <dt className="text-[#6b7280]">Founded</dt>
+                <dd className="mt-1 font-medium text-[#111827]">
+                  2009 · Pastor Paul Rika (International Director)
+                </dd>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#111320] leading-tight tracking-tight">
-                An End-Time Movement Across the Body of Christ
-              </h2>
-              <div className="space-y-4 text-base text-[#4B5563] leading-relaxed">
-                <p>
-                  <strong>HOREMOW</strong> stands for the <strong>Holiness Revival Movement Worldwide</strong>, a non-denominational Christian ministry founded in 2009 by <strong>Pastor Paul Rika</strong>, who serves as the International Director. The movement was formally inaugurated in 2010 in Kwali, Abuja, Nigeria.
-                </p>
-                <p>
-                  HOREMOW is not structured as a separate church denomination. Rather, it operates as an end-time movement operating across and within existing Christian churches to bring believers together under a shared spiritual umbrella of biblical truth and sanctification.
-                </p>
+              <div>
+                <dt className="text-[#6b7280]">Inauguration</dt>
+                <dd className="mt-1 font-medium text-[#111827]">
+                  2010 · Kwali, Abuja (Holiness Campground)
+                </dd>
               </div>
+            </dl>
+          </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div className="p-4 rounded-[16px] bg-[#F8FAFC] border border-gray-100">
-                  <span className="text-xs font-bold text-gray-500 uppercase">Founded</span>
-                  <p className="text-base font-bold text-[#111320] mt-0.5">2009 · Pastor Paul Rika</p>
-                  <p className="text-xs text-gray-500">International Director</p>
-                </div>
-                <div className="p-4 rounded-[16px] bg-[#F8FAFC] border border-gray-100">
-                  <span className="text-xs font-bold text-gray-500 uppercase">Inauguration</span>
-                  <p className="text-base font-bold text-[#111320] mt-0.5">2010 · Kwali, Abuja</p>
-                  <p className="text-xs text-gray-500">Holiness Campground</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-6 relative">
-              <div className="relative aspect-[4/3] rounded-[24px] overflow-hidden shadow-2xl border-4 border-white bg-gray-100">
-                <Image
-                  src="/images/pst_paul_rika_1.jpg"
-                  alt="Pastor Paul Rika, Founder and International Director of HOREMOW"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 500px"
-                />
-              </div>
-              <div className="mt-3 text-center text-xs text-gray-500 italic">
-                Pastor Paul Rika, International Director & Founder
-              </div>
-            </div>
-          </section>
-
-          {/* Section 2: Core Mission & Guiding Authority */}
-          <section className="rounded-[24px] bg-[#0E1020] text-white p-8 sm:p-14 relative overflow-hidden">
-            <div className="relative z-10 max-w-3xl space-y-8">
-              <div className="space-y-4">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#8EE3D6]">
-                  Our Calling & Authority
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                  Core Mission & Guiding Authority
-                </h2>
-                <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
-                  The stated purpose of the Holiness Revival Movement Worldwide is to revive biblical righteousness, holiness (both inward and outward), complete sanctification, and restitution among Christians, preparing believers for the rapture and the second coming of Jesus Christ.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                <div className="bg-[#171A2B] border border-white/10 rounded-[18px] p-6 space-y-3">
-                  <div className="w-10 h-10 rounded-full bg-[#8EE3D6]/20 text-[#8EE3D6] flex items-center justify-center">
-                    <BookOpen className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-white text-lg">Absolute Biblical Authority</h3>
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    The movement treats the <strong>66 books of the Holy Bible</strong> as its absolute and final working manual for faith, conduct, doctrine, and salvation.
-                  </p>
-                </div>
-
-                <div className="bg-[#171A2B] border border-white/10 rounded-[18px] p-6 space-y-3">
-                  <div className="w-10 h-10 rounded-full bg-[#8EE3D6]/20 text-[#8EE3D6] flex items-center justify-center">
-                    <Heart className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-white text-lg">Inward & Outward Holiness</h3>
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    Emphasizing genuine repentance, practical restitution, heart purity, modest Christian living, and urgent rapture readiness for every soul.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 3: Activities and Global Presence */}
-          <section className="space-y-10">
-            <div className="text-center max-w-2xl mx-auto space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
-                Ministries & Reach
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#111320] tracking-tight">
-                Activities and Global Presence
-              </h2>
-              <p className="text-base text-gray-600">
-                Impacting millions across nations, languages, and denominations.
+          <div className="lg:col-span-5 relative min-h-[320px]">
+            <Image
+              src={CONFERENCE_INFO.assets.about}
+              alt="Pastor Paul Rika, International Director & Founder"
+              fill
+              className="object-cover object-top"
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-6">
+              <p className="text-sm font-medium text-white">
+                Pastor Paul Rika, International Director &amp; Founder
               </p>
             </div>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-6 rounded-[20px] bg-[#F8FAFC] border border-gray-100 space-y-4">
-                <div className="w-10 h-10 rounded-full bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center">
-                  <Users className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-[#111320] text-lg">Revivals & Conferences</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  HOREMOW organizes revival meetings, international crusades, leadership conferences, ministers&apos; conferences, and Bible training colleges across the globe.
-                </p>
-              </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="card bg-ticks p-6 sm:p-10 space-y-4">
+            <p className="text-xs font-medium tracking-wide text-[#0e7a6e]">
+              Absolute Biblical Authority
+            </p>
+            <h2 className="h-card text-[#111827]">66 Books · One Working Manual</h2>
+            <p className="text-base leading-relaxed text-[#4b5563]">{about.authority}</p>
+          </div>
 
-              <div className="p-6 rounded-[20px] bg-[#F8FAFC] border border-gray-100 space-y-4">
-                <div className="w-10 h-10 rounded-full bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-[#111320] text-lg">Literature & Multilingual Media</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  Heavily promotes evangelism through the distribution of holiness books, sermons, tracts, and multilingual audio/video resources authored by Pastor Paul Rika.
-                </p>
-              </div>
+          <div className="card bg-ticks p-6 sm:p-10 space-y-4">
+            <p className="text-xs font-medium tracking-wide text-[#0e7a6e]">
+              Core Calling &amp; Mandate
+            </p>
+            <h2 className="h-card text-[#111827]">Inward &amp; Outward Holiness</h2>
+            <p className="text-base leading-relaxed text-[#4b5563]">{about.mission}</p>
+          </div>
+        </div>
 
-              <div className="p-6 rounded-[20px] bg-[#F8FAFC] border border-gray-100 space-y-4">
-                <div className="w-10 h-10 rounded-full bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center">
-                  <Globe2 className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-[#111320] text-lg">International Chapters</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  Beyond Nigeria, HOREMOW has established chapters across Africa (including Uganda, Kenya, Rwanda, Malawi, Zambia, Liberia), North America, Europe, and Asia.
-                </p>
-              </div>
-            </div>
+        <div className="space-y-6">
+          <div>
+            <p className="text-sm font-medium tracking-wide text-[#0e7a6e]">
+              Ministries &amp; Reach
+            </p>
+            <h2 className="h-section mt-2">Activities and Global Presence</h2>
+          </div>
 
-            {/* Collage Showcase */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-              <div className="relative aspect-[4/3] rounded-[18px] overflow-hidden shadow-md">
-                <Image
-                  src="/images/about_us_1.jpg"
-                  alt="HOREMOW congregation and leaders"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {ABOUT_PILLARS.map((p) => (
+              <div key={p.index} className="card bg-white p-6 sm:p-8 space-y-4">
+                <span className="font-mono text-xs text-[#0e7a6e]">{p.index}.</span>
+                <h3 className="text-lg font-medium text-[#111827]">{p.title}</h3>
+                <p className="text-sm leading-relaxed text-[#4b5563]">{p.description}</p>
               </div>
-              <div className="relative aspect-[4/3] rounded-[18px] overflow-hidden shadow-md">
-                <Image
-                  src="/images/about_us_2.jpg"
-                  alt="HOREMOW ministers in fellowship"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                />
-              </div>
-              <div className="relative aspect-[4/3] rounded-[18px] overflow-hidden shadow-md">
-                <Image
-                  src="/images/about_us_3.jpg"
-                  alt="HOREMOW worshippers"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                />
-              </div>
-            </div>
-          </section>
+            ))}
+          </div>
 
-          {/* Section 4: Venue & Interactive Map */}
-          <section className="rounded-[24px] border border-gray-200 bg-[#F8FAFC] p-8 sm:p-12 space-y-8">
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
-                <MapPin className="w-4 h-4" />
-                <span>Headquarters & Campground</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-[#111320]">
-                Holiness Campground, Kwali, Abuja
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 max-w-2xl">
-                The international headquarters and campground of the Holiness Revival Movement Worldwide, located behind Federal Government College (FGC), Kwali, Federal Capital Territory, Abuja, Nigeria.
-              </p>
-            </div>
+          <div className="card bg-white p-6 sm:p-8 space-y-3">
+            <h3 className="text-lg font-medium text-[#111827]">Literature &amp; Media Outreach</h3>
+            <p className="text-sm leading-relaxed text-[#4b5563]">{about.activities}</p>
+            <p className="text-sm leading-relaxed text-[#4b5563]">
+              <span className="font-medium text-[#111827]">Global reach:</span>{" "}
+              {about.globalReach}
+            </p>
+          </div>
+        </div>
 
-            <div className="overflow-hidden rounded-[18px] border border-gray-200 shadow-sm bg-white">
-              <div className="aspect-[16/9] w-full min-h-[360px] sm:min-h-[420px]">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4096.546839279105!2d7.057758310743839!3d8.829087291188033!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x104e8a458c737ff9%3A0x8547b10178d75a9c!2sHoliness%20Camp%20Ground%2C%20Kwali%20Abuja!5e1!3m2!1sen!2sng!4v1794127232959!5m2!1sen!2sng"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  title="Google Maps Location - Holiness Campground, Kwali, Abuja"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <div className="text-xs text-gray-500">
-                <span className="font-semibold text-gray-700">Landmark:</span> Behind FGC, Kwali, along the Abuja-Lokoja Expressway.
-              </div>
+        <div className="card overflow-hidden grid grid-cols-1 lg:grid-cols-12 items-center">
+          <div className="lg:col-span-6 p-6 sm:p-10 space-y-4">
+            <p className="text-xs font-medium tracking-wide text-[#0e7a6e]">
+              Headquarters &amp; Campground
+            </p>
+            <h2 className="h-card text-[#111827]">{CONFERENCE_INFO.venueShort}</h2>
+            <p className="text-base leading-relaxed text-[#4b5563]">
+              The international headquarters and campground of the Holiness Revival Movement
+              Worldwide, located {CONFERENCE_INFO.landmark}
+            </p>
+            <div className="pt-2 flex flex-wrap gap-4">
               <Link
                 href="/camp-info"
-                className="text-xs font-bold text-[#0E7A6E] hover:underline inline-flex items-center gap-1"
+                className="link-arrow text-sm font-medium text-[#111827]"
               >
-                <span>View Camp Info & Travel Advisory</span>
-                <span>→</span>
+                <span>View Camp Info &amp; Travel Advisory</span>
+                <ArrowRight className="h-4 w-4 text-[#0e7a6e]" />
               </Link>
-            </div>
-          </section>
-
-          {/* CTA Banner */}
-          <section className="text-center space-y-6 pt-4">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#111320]">
-              Join Us at IHGC 2026
-            </h2>
-            <p className="text-gray-600 max-w-xl mx-auto text-sm">
-              Experience life-transforming biblical preaching, holy revival, and divine impartation at the Holiness Campground, Kwali, Abuja from 8 to 11 December 2026.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-[#8EE3D6] text-[#0E1020] font-bold text-sm tracking-wide hover:bg-[#7BD4C7] shadow-sm transition-all"
-              >
+              <Link href="/register" className="btn btn-primary !min-h-[44px]">
                 Register for IHGC 2026
               </Link>
-              <Link
-                href="/conference"
-                className="inline-flex items-center justify-center px-8 py-3.5 rounded-full border border-gray-300 text-[#111320] font-semibold text-sm hover:bg-gray-50 transition-all"
-              >
-                Conference Details
-              </Link>
             </div>
-          </section>
-
+          </div>
+          <div className="lg:col-span-6 h-72 lg:h-full relative">
+            <Image
+              src={CONFERENCE_INFO.assets.campground}
+              alt="Holiness Campground, Kwali, Abuja"
+              fill
+              className="object-cover"
+            />
+          </div>
         </div>
-      </main>
-
+      </div>
       <Footer />
     </div>
   );
