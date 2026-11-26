@@ -77,6 +77,29 @@ export default function ContactPage() {
             </Link>
           </div>
         </div>
+
+        <div className="card overflow-hidden bg-white">
+          <div className="border-b border-[#e5e7eb] p-6 sm:p-8">
+            <p className="text-xs font-medium tracking-wide text-[#0e7a6e]">
+              Venue Location
+            </p>
+            <h2 className="mt-1.5 h-card text-[#111827]">{CONFERENCE_INFO.venue}</h2>
+            <p className="mt-1 text-sm text-[#4b5563]">{CONFERENCE_INFO.landmark}</p>
+          </div>
+          <div className="aspect-[16/9] w-full min-h-[320px] sm:min-h-[420px]">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3942.5413190054555!2d7.057758310743839!3d8.829087291188033!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x104e8a458c737ff9%3A0x8547b10178d75a9c!2sHoliness%20Camp%20Ground%2C%20Kwali%20Abuja!5e0!3m2!1sen!2sng!4v1795684907412!5m2!1sen!2sng"
+              title="Holiness Campground, Kwali, Abuja — Google Map"
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="h-full w-full"
+            />
+          </div>
+        </div>
       </div>
       <Footer />
     </div>
